@@ -25,6 +25,7 @@ class S3Service:
             aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
             region_name=settings.AWS_REGION,
         )
+        self.settings = settings
         self.bucket_name = settings.S3_BUCKET
         self._client = None
     

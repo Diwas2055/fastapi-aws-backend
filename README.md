@@ -23,6 +23,23 @@ A production-ready FastAPI backend with comprehensive AWS service integrations, 
 - **Structured Logging** - JSON logging with structlog
 - **Health Checks** - Kubernetes-ready probes
 
+## Documentation
+
+Detailed guides for every AWS service integration live in [`docs/`](docs/):
+
+| Guide | Description |
+|-------|-------------|
+| [AWS Architecture Overview](docs/aws-architecture.md) | How all AWS services fit together, event flows, deployment map |
+| [S3 Guide](docs/s3-guide.md) | File storage with presigned URLs |
+| [DynamoDB Guide](docs/dynamodb-guide.md) | NoSQL database with GSI support |
+| [SQS Guide](docs/sqs-guide.md) | Message queuing for async processing |
+| [SNS Guide](docs/sns-guide.md) | Pub/Sub notifications |
+| [Secrets Manager Guide](docs/secrets-manager-guide.md) | Secure secret storage |
+| [Lambda Guide](docs/lambda-guide.md) | Serverless function invocation |
+| [CloudWatch Guide](docs/cloudwatch-guide.md) | Monitoring and logging |
+
+Each guide covers configuration, code usage, API endpoints, LocalStack setup, IAM policies, best practices, and common errors.
+
 ## Quick Start
 
 ### Prerequisites
@@ -128,6 +145,16 @@ aws-fastapi-backend/
 │   │   ├── user_service.py
 │   │   └── tasks/        # Celery tasks
 │   └── main.py           # FastAPI application
+├── docs/                 # AWS service guides
+│   ├── README.md         # Documentation index
+│   ├── aws-architecture.md
+│   ├── s3-guide.md
+│   ├── dynamodb-guide.md
+│   ├── sqs-guide.md
+│   ├── sns-guide.md
+│   ├── secrets-manager-guide.md
+│   ├── lambda-guide.md
+│   └── cloudwatch-guide.md
 ├── migrations/           # Alembic migrations
 ├── scripts/              # Database init scripts & utilities
 ├── infrastructure/       # Infrastructure configs
@@ -828,3 +855,4 @@ MIT License - see LICENSE file for details.
 - **API Base**: http://localhost:8000/api/v1
 - **Health**: http://localhost:8000/health
 - **LocalStack**: http://localhost:4566
+- **AWS Guides**: [`docs/`](docs/README.md) — full service documentation index

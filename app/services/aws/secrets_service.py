@@ -1,9 +1,8 @@
-"""
-Secrets Manager service for secure secret storage.
-"""
-from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any
+"""Secrets Manager service for secure secret storage."""
+
 import json
+from contextlib import asynccontextmanager
+from typing import Any
 
 import aioboto3
 from botocore.exceptions import ClientError
@@ -16,7 +15,7 @@ logger = get_logger(__name__)
 
 class SecretsManagerService:
     """Service for interacting with AWS Secrets Manager."""
-    
+
     def __init__(self):
         self.session = aioboto3.Session(
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -24,7 +23,7 @@ class SecretsManagerService:
             region_name=settings.AWS_REGION,
         )
         self._client = None
-    
+
     @asynccontextmanager
     async def get_client(self):
         """Get Secrets Manager client context manager."""
@@ -33,14 +32,14 @@ class SecretsManagerService:
             endpoint_url=settings.AWS_ENDPOINT_URL,
         ) as client:
             yield client
-    
+
     async def create_secret(
         self,
         name: str,
-        secret_value: Dict[str, Any],
-        description: Optional[str] = None,
-        tags: Optional[list] = None,
-    ) -> Optional[str]:
+        secret_value: dict[str, Any],
+        description: str | None = None,
+        tags: list | None = None,
+    ) -> str | None:
         """Create a new secret."""
         try:
             async with self.get_client() as client:
@@ -59,13 +58,13 @@ class SecretsManagerService:
                 return await self.update_secret(name, secret_value)
             logger.error("Failed to create secret", name=name, error=str(e))
             return None
-    
-    async def get_secret(self, name: str) -> Optional[Dict[str, Any]]:
+
+    async def get_secret(self, name: str) -> dict[str, Any] | None:
         """Get a secret value."""
         try:
             async with self.get_client() as client:
                 response = await client.get_secret_value(SecretId=name)
-            
+
             secret_string = response.get("SecretString")
             if secret_string:
                 return json.loads(secret_string)
@@ -76,12 +75,12 @@ class SecretsManagerService:
                 return None
             logger.error("Failed to get secret", name=name, error=str(e))
             return None
-    
+
     async def update_secret(
         self,
         name: str,
-        secret_value: Dict[str, Any],
-    ) -> Optional[str]:
+        secret_value: dict[str, Any],
+    ) -> str | None:
         """Update an existing secret."""
         try:
             async with self.get_client() as client:
@@ -95,7 +94,7 @@ class SecretsManagerService:
         except ClientError as e:
             logger.error("Failed to update secret", name=name, error=str(e))
             return None
-    
+
     async def delete_secret(
         self,
         name: str,
@@ -113,7 +112,7 @@ class SecretsManagerService:
         except ClientError as e:
             logger.error("Failed to delete secret", name=name, error=str(e))
             return False
-    
+
     async def list_secrets(self, max_results: int = 100) -> list:
         """List secrets."""
         try:
@@ -123,7 +122,7 @@ class SecretsManagerService:
         except ClientError as e:
             logger.error("Failed to list secrets", error=str(e))
             return []
-    
+
     async def rotate_secret(self, name: str) -> bool:
         """Trigger secret rotation."""
         try:

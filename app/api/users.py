@@ -1,24 +1,20 @@
-"""
-Users API routes.
-"""
-from typing import List
+"""Users API routes."""
+
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
+from app.core.security import get_current_active_superuser
 from app.db.session import get_db
+from app.models import User
 from app.schemas import (
+    PaginatedResponse,
     UserResponse,
     UserUpdate,
-    UserCreate,
-    PageParams,
-    PaginatedResponse,
 )
 from app.services import UserService
-from app.core.security import get_current_user, get_current_active_superuser
-from app.models import User
-from app.core.logging import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -34,9 +30,9 @@ async def list_users(
     """List all users (superuser only)."""
     service = UserService(db)
     users, total = await service.get_users(page=page, size=size)
-    
+
     pages = (total + size - 1) // size
-    
+
     return {
         "items": users,
         "total": total,
@@ -55,13 +51,13 @@ async def get_user(
     """Get user by ID (superuser only)."""
     service = UserService(db)
     user = await service.get_user_by_id(user_id)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     return user
 
 
@@ -74,14 +70,14 @@ async def update_user(
 ):
     """Update user (superuser only)."""
     service = UserService(db)
-    
+
     user = await service.update_user(user_id, user_data)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     return user
 
 
@@ -93,7 +89,7 @@ async def delete_user(
 ):
     """Delete user (superuser only)."""
     service = UserService(db)
-    
+
     success = await service.delete_user(user_id)
     if not success:
         raise HTTPException(

@@ -1,13 +1,12 @@
-"""
-Test health endpoints.
-"""
+"""Test health endpoints."""
+
 import pytest
 from httpx import AsyncClient
 
 
 class TestHealthEndpoints:
     """Test health check endpoints."""
-    
+
     @pytest.mark.asyncio
     async def test_health_check(self, client: AsyncClient):
         """Test basic health check."""
@@ -18,14 +17,14 @@ class TestHealthEndpoints:
         assert "version" in data
         assert "environment" in data
         assert "timestamp" in data
-    
+
     @pytest.mark.asyncio
     async def test_readiness_check(self, client: AsyncClient):
         """Test readiness probe."""
         response = await client.get("/ready")
         assert response.status_code == 200
         assert response.json()["status"] == "ready"
-    
+
     @pytest.mark.asyncio
     async def test_liveness_check(self, client: AsyncClient):
         """Test liveness probe."""
@@ -36,7 +35,7 @@ class TestHealthEndpoints:
 
 class TestRootEndpoint:
     """Test root endpoint."""
-    
+
     @pytest.mark.asyncio
     async def test_root(self, client: AsyncClient):
         """Test root endpoint returns app info."""

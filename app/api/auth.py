@@ -1,32 +1,22 @@
-"""
-Authentication API routes.
-"""
-from datetime import datetime, timezone
-from typing import Optional
-from uuid import UUID
+"""Authentication API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
-from app.schemas import (
-    UserCreate,
-    UserResponse,
-    Token,
-    RefreshTokenCreate,
-    RefreshTokenResponse,
-)
-from app.services import UserService
+from app.core.logging import get_logger
 from app.core.security import (
     get_current_user,
-    get_current_active_superuser,
-    decode_token,
-    revoke_refresh_token,
-    revoke_all_user_refresh_tokens,
 )
+from app.db.session import get_db
 from app.models import User
-from app.core.logging import get_logger
+from app.schemas import (
+    RefreshRequest,
+    Token,
+    UserCreate,
+    UserResponse,
+)
+from app.services import UserService
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -39,7 +29,7 @@ async def register(
 ):
     """Register a new user."""
     service = UserService(db)
-    
+
     # Check if user already exists
     existing = await service.get_user_by_email(user_data.email)
     if existing:
@@ -47,9 +37,8 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
         )
-    
-    user = await service.create_user(user_data)
-    return user
+
+    return await service.create_user(user_data)
 
 
 @router.post("/login", response_model=Token)
@@ -60,7 +49,7 @@ async def login(
 ):
     """Login user and return access and refresh tokens."""
     service = UserService(db)
-    
+
     user = await service.authenticate(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -68,55 +57,55 @@ async def login(
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Get client info
     user_agent = request.headers.get("user-agent") if request else None
     ip_address = request.client.host if request and request.client else None
-    
+
     tokens = await service.create_tokens(user, user_agent, ip_address)
-    
+
     logger.info("User logged in", user_id=str(user.id))
     return tokens
 
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-    refresh_token: str,
+    payload: RefreshRequest,
     db: AsyncSession = Depends(get_db),
     request: Request = None,
 ):
     """Refresh access token using refresh token."""
     service = UserService(db)
-    
+
     user_agent = request.headers.get("user-agent") if request else None
     ip_address = request.client.host if request and request.client else None
-    
-    tokens = await service.refresh_tokens(refresh_token, user_agent, ip_address)
+
+    tokens = await service.refresh_tokens(payload.refresh_token, user_agent, ip_address)
     if not tokens:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return tokens
 
 
 @router.post("/logout")
 async def logout(
-    refresh_token: str,
+    payload: RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ):
     """Logout user by revoking refresh token."""
     service = UserService(db)
-    
-    success = await service.logout(refresh_token)
+
+    success = await service.logout(payload.refresh_token)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid refresh token",
         )
-    
+
     return {"message": "Successfully logged out"}
 
 
@@ -127,7 +116,7 @@ async def logout_all(
 ):
     """Logout user from all devices."""
     service = UserService(db)
-    
+
     count = await service.logout_all(current_user.id)
     return {"message": f"Logged out from {count} devices"}
 
@@ -148,19 +137,20 @@ async def update_current_user(
 ):
     """Update current user information."""
     service = UserService(db)
-    
+
     # Convert to update schema
     from app.schemas import UserUpdate
+
     update_data = UserUpdate(
         email=user_data.email,
         full_name=user_data.full_name,
     )
-    
+
     user = await service.update_user(current_user.id, update_data)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     return user

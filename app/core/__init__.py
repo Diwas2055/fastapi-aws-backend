@@ -1,6 +1,5 @@
-"""
-Core package initialization.
-"""
+"""Core package initialization."""
+
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 

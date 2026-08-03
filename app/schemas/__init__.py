@@ -1,15 +1,16 @@
-"""
-Pydantic schemas for request/response validation.
-"""
-from datetime import datetime
-from typing import Optional, List, Any
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+"""Pydantic schemas for request/response validation."""
+
 import uuid
+from datetime import datetime
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # Base schemas
 class BaseSchema(BaseModel):
     """Base schema with common configuration."""
+
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
@@ -20,7 +21,7 @@ class BaseSchema(BaseModel):
 # User schemas
 class UserBase(BaseSchema):
     email: EmailStr
-    full_name: Optional[str] = Field(None, max_length=255)
+    full_name: str | None = Field(None, max_length=255)
 
 
 class UserCreate(UserBase):
@@ -28,9 +29,9 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseSchema):
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=255)
-    is_active: Optional[bool] = None
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, max_length=255)
+    is_active: bool | None = None
 
 
 class UserResponse(UserBase):
@@ -39,7 +40,7 @@ class UserResponse(UserBase):
     is_superuser: bool
     created_at: datetime
     updated_at: datetime
-    last_login: Optional[datetime] = None
+    last_login: datetime | None = None
 
 
 class UserInDB(UserResponse):
@@ -54,16 +55,20 @@ class Token(BaseSchema):
 
 
 class TokenData(BaseSchema):
-    sub: Optional[str] = None
-    exp: Optional[int] = None
+    sub: str | None = None
+    exp: int | None = None
     type: str = "access"
 
 
 class RefreshTokenCreate(BaseSchema):
     token: str
     expires_at: datetime
-    user_agent: Optional[str] = None
-    ip_address: Optional[str] = None
+    user_agent: str | None = None
+    ip_address: str | None = None
+
+
+class RefreshRequest(BaseSchema):
+    refresh_token: str
 
 
 class RefreshTokenResponse(BaseSchema):
@@ -71,13 +76,13 @@ class RefreshTokenResponse(BaseSchema):
     expires_at: datetime
     revoked: bool
     created_at: datetime
-    user_agent: Optional[str] = None
+    user_agent: str | None = None
 
 
 # Item schemas
 class ItemBase(BaseSchema):
     title: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
+    description: str | None = None
     is_public: bool = False
 
 
@@ -86,25 +91,28 @@ class ItemCreate(ItemBase):
 
 
 class ItemUpdate(BaseSchema):
-    title: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    is_public: Optional[bool] = None
+    title: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = None
+    is_public: bool | None = None
 
 
 class ItemResponse(ItemBase):
     id: uuid.UUID
     owner_id: uuid.UUID
-    s3_key: Optional[str] = None
-    dynamodb_id: Optional[str] = None
+    s3_key: str | None = None
+    dynamodb_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
 
 class ItemWithPresignedUrl(ItemResponse):
-    presigned_url: Optional[str] = None
+    presigned_url: str | None = None
 
 
 # Pagination schemas
+T = TypeVar("T")
+
+
 class PageParams(BaseSchema):
     page: int = Field(1, ge=1)
     size: int = Field(20, ge=1, le=100)
@@ -117,8 +125,8 @@ class PageResponse(BaseSchema):
     pages: int
 
 
-class PaginatedResponse(BaseSchema, PageResponse):
-    items: List[Any]
+class PaginatedResponse(PageResponse, Generic[T]):
+    items: list[T]
 
 
 # Health check schemas
@@ -137,14 +145,14 @@ class DetailedHealthCheck(HealthCheck):
 
 # Error schemas
 class ErrorDetail(BaseSchema):
-    field: Optional[str] = None
+    field: str | None = None
     message: str
     code: str
 
 
 class ErrorResponse(BaseSchema):
     detail: str
-    errors: Optional[List[ErrorDetail]] = None
+    errors: list[ErrorDetail] | None = None
 
 
 # AWS Service schemas
@@ -186,45 +194,45 @@ class DynamoDBItemResponse(BaseSchema):
 class SQSMessageSend(BaseSchema):
     message_body: dict
     delay_seconds: int = Field(0, ge=0, le=900)
-    message_attributes: Optional[dict] = None
+    message_attributes: dict | None = None
 
 
 class SQSMessageResponse(BaseSchema):
     message_id: str
     md5_of_body: str
-    sequence_number: Optional[str] = None
+    sequence_number: str | None = None
 
 
 class SNSMessagePublish(BaseSchema):
     message: str
-    subject: Optional[str] = None
-    message_attributes: Optional[dict] = None
+    subject: str | None = None
+    message_attributes: dict | None = None
 
 
 class SNSMessageResponse(BaseSchema):
     message_id: str
-    sequence_number: Optional[str] = None
+    sequence_number: str | None = None
 
 
 # Audit log schemas
 class AuditLogResponse(BaseSchema):
     id: uuid.UUID
-    user_id: Optional[uuid.UUID] = None
+    user_id: uuid.UUID | None = None
     action: str
     resource_type: str
-    resource_id: Optional[str] = None
-    details: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    resource_id: str | None = None
+    details: str | None = None
+    ip_address: str | None = None
+    user_agent: str | None = None
     created_at: datetime
 
 
 # Bulk operations
 class BulkDeleteRequest(BaseSchema):
-    ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
+    ids: list[uuid.UUID] = Field(..., min_length=1, max_length=100)
 
 
 class BulkOperationResponse(BaseSchema):
     success_count: int
     failed_count: int
-    errors: List[ErrorDetail] = []
+    errors: list[ErrorDetail] = []

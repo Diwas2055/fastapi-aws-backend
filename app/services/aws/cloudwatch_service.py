@@ -1,10 +1,9 @@
-"""
-CloudWatch service for monitoring and logging.
-"""
-from contextlib import asynccontextmanager
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta, UTC
+"""CloudWatch service for monitoring and logging."""
+
 import json
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import aioboto3
 from botocore.exceptions import ClientError
@@ -17,7 +16,7 @@ logger = get_logger(__name__)
 
 class CloudWatchService:
     """Service for interacting with AWS CloudWatch."""
-    
+
     def __init__(self):
         self.session = aioboto3.Session(
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -27,7 +26,7 @@ class CloudWatchService:
         self.log_group = settings.CLOUDWATCH_LOG_GROUP
         self.log_stream = settings.CLOUDWATCH_LOG_STREAM
         self._client = None
-    
+
     @asynccontextmanager
     async def get_client(self):
         """Get CloudWatch client context manager."""
@@ -36,7 +35,7 @@ class CloudWatchService:
             endpoint_url=settings.AWS_ENDPOINT_URL,
         ) as client:
             yield client
-    
+
     @asynccontextmanager
     async def get_logs_client(self):
         """Get CloudWatch Logs client context manager."""
@@ -45,11 +44,11 @@ class CloudWatchService:
             endpoint_url=settings.AWS_ENDPOINT_URL,
         ) as client:
             yield client
-    
+
     async def put_metric_data(
         self,
         namespace: str,
-        metric_data: List[Dict[str, Any]],
+        metric_data: list[dict[str, Any]],
     ) -> bool:
         """Put custom metric data."""
         try:
@@ -63,28 +62,30 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to put metric data", error=str(e))
             return False
-    
+
     async def put_metric(
         self,
         namespace: str,
         name: str,
         value: float,
         unit: str = "Count",
-        dimensions: Optional[List[Dict[str, str]]] = None,
+        dimensions: list[dict[str, str]] | None = None,
     ) -> bool:
         """Put a single custom metric."""
-        metric_data = [{
-            "MetricName": name,
-            "Value": value,
-            "Unit": unit,
-            "Timestamp": datetime.now(UTC),
-        }]
-        
+        metric_data = [
+            {
+                "MetricName": name,
+                "Value": value,
+                "Unit": unit,
+                "Timestamp": datetime.now(UTC),
+            }
+        ]
+
         if dimensions:
             metric_data[0]["Dimensions"] = dimensions
-        
+
         return await self.put_metric_data(namespace=namespace, metric_data=metric_data)
-    
+
     async def get_metric_statistics(
         self,
         namespace: str,
@@ -92,8 +93,8 @@ class CloudWatchService:
         start_time: datetime,
         end_time: datetime,
         period: int = 300,
-        statistics: List[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        statistics: list[str] | None = None,
+    ) -> dict[str, Any] | None:
         """Get metric statistics."""
         try:
             async with self.get_client() as client:
@@ -109,8 +110,8 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to get metric statistics", error=str(e))
             return None
-    
-    async def create_log_group(self, log_group_name: Optional[str] = None) -> bool:
+
+    async def create_log_group(self, log_group_name: str | None = None) -> bool:
         """Create a CloudWatch log group."""
         group = log_group_name or self.log_group
         try:
@@ -123,18 +124,18 @@ class CloudWatchService:
                 return True
             logger.error("Failed to create log group", error=str(e))
             return False
-    
+
     async def create_log_stream(
         self,
-        log_group_name: Optional[str] = None,
-        log_stream_name: Optional[str] = None,
+        log_group_name: str | None = None,
+        log_stream_name: str | None = None,
     ) -> bool:
         """Create a CloudWatch log stream."""
         group = log_group_name or self.log_group
         stream = log_stream_name or self.log_stream
         try:
             async with self.get_logs_client() as client:
-                response = await client.create_log_stream(
+                await client.create_log_stream(
                     logGroupName=group,
                     logStreamName=stream,
                 )
@@ -145,29 +146,33 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to create log stream", error=str(e))
             return False
-    
+
     async def put_log_events(
         self,
-        log_events: List[Dict[str, Any]],
-        log_group_name: Optional[str] = None,
-        log_stream_name: Optional[str] = None,
+        log_events: list[dict[str, Any]],
+        log_group_name: str | None = None,
+        log_stream_name: str | None = None,
     ) -> bool:
         """Put log events to CloudWatch."""
         group = log_group_name or self.log_group
         stream = log_stream_name or self.log_stream
-        
+
         # Format log events
         events = []
         for event in log_events:
-            events.append({
-                "timestamp": event.get("timestamp") or int(datetime.now(UTC).timestamp() * 1000),
-                "message": event.get("message") if isinstance(event.get("message"), str)
+            events.append(
+                {
+                    "timestamp": event.get("timestamp")
+                    or int(datetime.now(UTC).timestamp() * 1000),
+                    "message": event.get("message")
+                    if isinstance(event.get("message"), str)
                     else json.dumps(event.get("message")),
-            })
-        
+                }
+            )
+
         if not events:
             return True
-        
+
         try:
             async with self.get_logs_client() as client:
                 params = {
@@ -175,57 +180,59 @@ class CloudWatchService:
                     "logStreamName": stream,
                     "logEvents": events,
                 }
-                
+
                 # Use sequence token if available
                 token = getattr(self, "_sequence_token", None)
                 if token:
                     params["sequenceToken"] = token
-                
+
                 response = await client.put_log_events(**params)
                 self._sequence_token = response.get("nextSequenceToken")
-            
+
             return True
         except ClientError as e:
             logger.error("Failed to put log events", error=str(e))
             return False
-    
+
     async def put_log_event(
         self,
         message: str,
         level: str = "INFO",
-        log_group_name: Optional[str] = None,
-        log_stream_name: Optional[str] = None,
+        log_group_name: str | None = None,
+        log_stream_name: str | None = None,
     ) -> bool:
         """Put a single log event."""
         event = {
             "timestamp": int(datetime.now(UTC).timestamp() * 1000),
-            "message": json.dumps({
-                "level": level,
-                "message": message,
-                "timestamp": datetime.now(UTC).isoformat(),
-            }),
+            "message": json.dumps(
+                {
+                    "level": level,
+                    "message": message,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            ),
         }
         return await self.put_log_events(
             log_events=[event],
             log_group_name=log_group_name,
             log_stream_name=log_stream_name,
         )
-    
+
     async def get_log_events(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
-        log_group_name: Optional[str] = None,
-        log_stream_name: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        log_group_name: str | None = None,
+        log_stream_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Get log events from CloudWatch."""
         group = log_group_name or self.log_group
         stream = log_stream_name or self.log_stream
-        
+
         start = start_time or (datetime.now(UTC) - timedelta(hours=1))
         end = end_time or datetime.now(UTC)
-        
+
         try:
             async with self.get_logs_client() as client:
                 response = await client.get_log_events(
@@ -240,21 +247,21 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to get log events", error=str(e))
             return []
-    
+
     async def filter_log_events(
         self,
         filter_pattern: str,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
-        log_group_name: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        log_group_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Filter log events across log streams."""
         group = log_group_name or self.log_group
-        
+
         start = start_time or (datetime.now(UTC) - timedelta(hours=1))
         end = end_time or datetime.now(UTC)
-        
+
         try:
             async with self.get_logs_client() as client:
                 response = await client.filter_log_events(
@@ -268,11 +275,11 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to filter log events", error=str(e))
             return []
-    
+
     async def put_dashboard(
         self,
         name: str,
-        dashboard_body: Dict[str, Any],
+        dashboard_body: dict[str, Any],
     ) -> bool:
         """Create or update a CloudWatch dashboard."""
         try:
@@ -286,8 +293,8 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to put dashboard", error=str(e))
             return False
-    
-    async def list_dashboards(self) -> List[Dict[str, str]]:
+
+    async def list_dashboards(self) -> list[dict[str, str]]:
         """List CloudWatch dashboards."""
         try:
             async with self.get_client() as client:
@@ -296,18 +303,18 @@ class CloudWatchService:
         except ClientError as e:
             logger.error("Failed to list dashboards", error=str(e))
             return []
-    
-    async def describe_alarms(self) -> List[Dict[str, Any]]:
+
+    async def describe_alarms(self) -> list[dict[str, Any]]:
         """Describe CloudWatch alarms."""
         try:
             async with self.get_client() as client:
                 response = await client.describe_alarms()
-            
+
             return response.get("MetricAlarms", [])
         except ClientError as e:
             logger.error("Failed to describe alarms", error=str(e))
             return []
-    
+
     async def put_alarm(
         self,
         name: str,
@@ -318,7 +325,7 @@ class CloudWatchService:
         evaluation_periods: int = 1,
         period: int = 300,
         statistic: str = "Average",
-        alarm_actions: Optional[List[str]] = None,
+        alarm_actions: list[str] | None = None,
     ) -> bool:
         """Create or update a CloudWatch alarm."""
         try:
@@ -333,12 +340,12 @@ class CloudWatchService:
                     "Period": period,
                     "Statistic": statistic,
                 }
-                
+
                 if alarm_actions:
                     params["AlarmActions"] = alarm_actions
-                
+
                 await client.put_metric_alarm(**params)
-            
+
             logger.info("Alarm created", name=name)
             return True
         except ClientError as e:

@@ -1,22 +1,19 @@
-"""
-Test configuration and fixtures.
-"""
-import pytest
-import asyncio
-from typing import AsyncGenerator
-from uuid import uuid4
-from datetime import datetime, timezone
+"""Test configuration and fixtures."""
 
+import asyncio
+from collections.abc import AsyncGenerator
+from datetime import UTC, datetime
+from uuid import uuid4
+
+import pytest
 from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.main import app
+from app.core.security import create_access_token, get_password_hash
 from app.db.session import Base, get_db
-from app.core.config import settings
-from app.core.security import get_password_hash, create_access_token
+from app.main import app
 from app.models import User
-
 
 # Test database URL (in-memory SQLite for unit tests)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -43,31 +40,31 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test."""
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     async with TestSessionLocal() as session:
         yield session
-    
+
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create test client with overridden database."""
-    
+
     async def override_get_db():
         yield db_session
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -81,8 +78,8 @@ async def test_user(db_session: AsyncSession) -> User:
         full_name="Test User",
         is_active=True,
         is_superuser=False,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()
@@ -100,8 +97,8 @@ async def superuser(db_session: AsyncSession) -> User:
         full_name="Admin User",
         is_active=True,
         is_superuser=True,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     db_session.add(user)
     await db_session.commit()

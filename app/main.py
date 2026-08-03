@@ -1,18 +1,16 @@
-"""
-Main FastAPI application.
-"""
+"""Main FastAPI application."""
+
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-import structlog
 
+from app.api import auth, aws, health, items, users
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
-from app.db.session import init_db, close_db
-from app.api import auth, users, items, aws, health
-
+from app.db.session import close_db, init_db
 
 # Configure logging
 configure_logging()
@@ -23,19 +21,21 @@ logger = get_logger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    logger.info("Starting application", version=settings.APP_VERSION, environment=settings.ENVIRONMENT)
-    
+    logger.info(
+        "Starting application", version=settings.APP_VERSION, environment=settings.ENVIRONMENT
+    )
+
     # Initialize database
     await init_db()
     logger.info("Database initialized")
-    
+
     # Initialize AWS services (create buckets, tables, etc.)
     if settings.ENVIRONMENT != "production":
         # In development, create necessary AWS resources
         pass
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application")
     await close_db()
@@ -100,6 +100,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host=settings.HOST,

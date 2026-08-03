@@ -1,27 +1,27 @@
-"""
-Health check API routes.
-"""
-from datetime import datetime, timezone
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+"""Health check API routes."""
 
-from app.db.session import get_db
-from app.services.aws import s3_service, dynamodb_service, cloudwatch_service
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
-from app.schemas import HealthCheck, DetailedHealthCheck
+from app.db.session import get_db
+from app.schemas import DetailedHealthCheck, HealthCheck
+from app.services.aws import s3_service
 
 router = APIRouter()
 
 
 @router.get("/health", response_model=HealthCheck)
 async def health_check():
-    """Basic health check."""
+    """Check basic health status."""
     return {
         "status": "healthy",
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": datetime.now(UTC),
     }
 
 
@@ -30,49 +30,53 @@ async def detailed_health_check(
     db: AsyncSession = Depends(get_db),
 ):
     """Detailed health check with dependencies."""
-    from datetime import datetime, timezone
-    
+    from datetime import datetime
+
     # Check database
     db_status = "healthy"
     try:
         await db.execute(text("SELECT 1"))
     except Exception:
         db_status = "unhealthy"
-    
+
     # Check Redis (would need redis client)
     redis_status = "healthy"
-    
+
     # Check AWS services
     aws_services = {}
-    
+
     # S3
     try:
         await s3_service.bucket_exists()
         aws_services["s3"] = "healthy"
     except Exception:
         aws_services["s3"] = "unhealthy"
-    
+
     # DynamoDB
     try:
         # Just check if table exists
         aws_services["dynamodb"] = "healthy"
     except Exception:
         aws_services["dynamodb"] = "unhealthy"
-    
+
     # CloudWatch
     try:
         aws_services["cloudwatch"] = "healthy"
     except Exception:
         aws_services["cloudwatch"] = "unhealthy"
-    
+
     return {
-        "status": "healthy" if all([
-            db_status == "healthy",
-            redis_status == "healthy",
-        ]) else "degraded",
+        "status": "healthy"
+        if all(
+            [
+                db_status == "healthy",
+                redis_status == "healthy",
+            ]
+        )
+        else "degraded",
         "version": settings.APP_VERSION,
         "environment": settings.ENVIRONMENT,
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": datetime.now(UTC),
         "database": db_status,
         "redis": redis_status,
         "aws_services": aws_services,

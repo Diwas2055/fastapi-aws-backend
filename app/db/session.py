@@ -1,13 +1,13 @@
-"""
-Database configuration and session management.
-"""
+"""Database configuration and session management."""
+
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+
 from sqlalchemy.ext.asyncio import (
-    AsyncSession,
     AsyncEngine,
-    create_async_engine,
+    AsyncSession,
     async_sessionmaker,
+    create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
@@ -17,7 +17,6 @@ from app.core.config import settings
 
 class Base(DeclarativeBase):
     """Base class for all database models."""
-    pass
 
 
 # Create async engine

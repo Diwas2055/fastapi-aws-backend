@@ -1,8 +1,7 @@
-"""
-SNS service for pub/sub notifications.
-"""
+"""SNS service for pub/sub notifications."""
+
 from contextlib import asynccontextmanager
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import aioboto3
 from botocore.exceptions import ClientError
@@ -15,7 +14,7 @@ logger = get_logger(__name__)
 
 class SNSService:
     """Service for interacting with AWS SNS."""
-    
+
     def __init__(self):
         self.session = aioboto3.Session(
             aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
@@ -24,7 +23,7 @@ class SNSService:
         )
         self.topic_arn = settings.SNS_TOPIC_ARN
         self._client = None
-    
+
     @asynccontextmanager
     async def get_client(self):
         """Get SNS client context manager."""
@@ -33,8 +32,8 @@ class SNSService:
             endpoint_url=settings.AWS_ENDPOINT_URL,
         ) as client:
             yield client
-    
-    async def create_topic(self, name: str) -> Optional[str]:
+
+    async def create_topic(self, name: str) -> str | None:
         """Create an SNS topic."""
         try:
             async with self.get_client() as client:
@@ -45,35 +44,35 @@ class SNSService:
         except ClientError as e:
             logger.error("Failed to create topic", name=name, error=str(e))
             return None
-    
+
     async def publish(
         self,
         message: str,
-        subject: Optional[str] = None,
-        message_attributes: Optional[Dict[str, Dict]] = None,
-        topic_arn: Optional[str] = None,
-    ) -> Optional[Dict[str, str]]:
+        subject: str | None = None,
+        message_attributes: dict[str, dict] | None = None,
+        topic_arn: str | None = None,
+    ) -> dict[str, str] | None:
         """Publish a message to SNS topic."""
         topic = topic_arn or self.topic_arn
         if not topic:
             logger.error("No topic ARN configured")
             return None
-        
+
         try:
             async with self.get_client() as client:
-                params = {
+                params: dict[str, Any] = {
                     "TopicArn": topic,
                     "Message": message,
                 }
-                
+
                 if subject:
                     params["Subject"] = subject
-                
+
                 if message_attributes:
                     params["MessageAttributes"] = message_attributes
-                
+
                 response = await client.publish(**params)
-            
+
             logger.debug("Message published", topic=topic, message_id=response["MessageId"])
             return {
                 "message_id": response["MessageId"],
@@ -82,19 +81,19 @@ class SNSService:
         except ClientError as e:
             logger.error("Failed to publish message", topic=topic, error=str(e))
             return None
-    
+
     async def publish_batch(
         self,
-        messages: List[Dict[str, Any]],
-        topic_arn: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        messages: list[dict[str, Any]],
+        topic_arn: str | None = None,
+    ) -> dict[str, Any]:
         """Publish multiple messages (using batch if available)."""
         topic = topic_arn or self.topic_arn
         if not topic:
             return {"successful": [], "failed": []}
-        
-        results = {"successful": [], "failed": []}
-        
+
+        results: dict[str, list[dict[str, Any]]] = {"successful": [], "failed": []}
+
         for i, msg in enumerate(messages):
             result = await self.publish(
                 message=msg.get("message", ""),
@@ -106,41 +105,41 @@ class SNSService:
                 results["successful"].append({"Id": str(i), **result})
             else:
                 results["failed"].append({"Id": str(i)})
-        
+
         return results
-    
+
     async def subscribe(
         self,
         protocol: str,
         endpoint: str,
-        topic_arn: Optional[str] = None,
-        filter_policy: Optional[Dict] = None,
-    ) -> Optional[str]:
+        topic_arn: str | None = None,
+        filter_policy: dict | None = None,
+    ) -> str | None:
         """Subscribe an endpoint to a topic."""
         topic = topic_arn or self.topic_arn
         if not topic:
             return None
-        
+
         try:
             async with self.get_client() as client:
-                params = {
+                params: dict[str, Any] = {
                     "TopicArn": topic,
                     "Protocol": protocol,
                     "Endpoint": endpoint,
                 }
-                
+
                 if filter_policy:
                     params["Attributes"] = {"FilterPolicy": str(filter_policy)}
-                
+
                 response = await client.subscribe(**params)
-            
+
             subscription_arn = response["SubscriptionArn"]
             logger.info("Subscription created", protocol=protocol, endpoint=endpoint)
             return subscription_arn
         except ClientError as e:
             logger.error("Failed to subscribe", error=str(e))
             return None
-    
+
     async def unsubscribe(self, subscription_arn: str) -> bool:
         """Unsubscribe from a topic."""
         try:
@@ -151,16 +150,16 @@ class SNSService:
         except ClientError as e:
             logger.error("Failed to unsubscribe", error=str(e))
             return False
-    
+
     async def list_subscriptions(
         self,
-        topic_arn: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        topic_arn: str | None = None,
+    ) -> list[dict[str, Any]]:
         """List subscriptions for a topic."""
         topic = topic_arn or self.topic_arn
         if not topic:
             return []
-        
+
         try:
             async with self.get_client() as client:
                 response = await client.list_subscriptions_by_topic(TopicArn=topic)
@@ -168,19 +167,19 @@ class SNSService:
         except ClientError as e:
             logger.error("Failed to list subscriptions", error=str(e))
             return []
-    
+
     async def add_permission(
         self,
         label: str,
-        aws_account_ids: List[str],
-        actions: List[str],
-        topic_arn: Optional[str] = None,
+        aws_account_ids: list[str],
+        actions: list[str],
+        topic_arn: str | None = None,
     ) -> bool:
         """Add permission for other AWS accounts to publish."""
         topic = topic_arn or self.topic_arn
         if not topic:
             return False
-        
+
         try:
             async with self.get_client() as client:
                 await client.add_permission(

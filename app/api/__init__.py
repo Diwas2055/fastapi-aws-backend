@@ -1,7 +1,6 @@
-"""
-API router initialization.
-"""
-from app.api import auth, users, items, aws, health
+"""API router initialization."""
+
+from app.api import auth, aws, health, items, users
 
 __all__ = [
     "auth",

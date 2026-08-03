@@ -1,22 +1,23 @@
-"""
-AWS services API routes.
-"""
-from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+"""AWS services API routes."""
+
+from datetime import UTC
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from app.services.aws import (
-    s3_service,
-    dynamodb_service,
-    sqs_service,
-    sns_service,
-    secrets_manager_service,
-    lambda_service,
-    cloudwatch_service,
-)
+from app.core.logging import get_logger
 from app.core.security import get_current_active_superuser
 from app.models import User
-from app.core.logging import get_logger
+from app.services.aws import (
+    cloudwatch_service,
+    dynamodb_service,
+    lambda_service,
+    s3_service,
+    secrets_manager_service,
+    sns_service,
+    sqs_service,
+)
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -89,10 +90,11 @@ async def get_s3_upload_url(
     """Get presigned upload URL."""
     key = s3_service.generate_unique_key(filename, prefix)
     url = await s3_service.generate_presigned_upload_url(key, content_type)
-    
-    from datetime import datetime, timezone, timedelta
-    expires_at = datetime.now(timezone.utc) + timedelta(seconds=s3_service.settings.S3_PRESIGNED_URL_EXPIRY)
-    
+
+    from datetime import datetime, timedelta
+
+    expires_at = datetime.now(UTC) + timedelta(seconds=s3_service.settings.S3_PRESIGNED_URL_EXPIRY)
+
     return {
         "upload_url": url,
         "key": key,
@@ -105,14 +107,14 @@ async def get_s3_upload_url(
 class DynamoDBItemRequest(BaseModel):
     pk: str
     sk: str
-    data: Dict[str, Any]
-    gsi1pk: Optional[str] = None
-    gsi1sk: Optional[str] = None
+    data: dict[str, Any]
+    gsi1pk: str | None = None
+    gsi1sk: str | None = None
 
 
 class DynamoDBQueryRequest(BaseModel):
     pk: str
-    sk_prefix: Optional[str] = None
+    sk_prefix: str | None = None
     limit: int = 100
 
 
@@ -173,19 +175,18 @@ async def query_dynamodb(
     current_user: User = Depends(get_current_active_superuser),
 ):
     """Query DynamoDB items."""
-    result = await dynamodb_service.query_items(
+    return await dynamodb_service.query_items(
         pk=query.pk,
         sk_prefix=query.sk_prefix,
         limit=query.limit,
     )
-    return result
 
 
 # SQS Routes
 class SQSMessageRequest(BaseModel):
-    message_body: Dict[str, Any]
+    message_body: dict[str, Any]
     delay_seconds: int = 0
-    message_attributes: Optional[Dict[str, Dict]] = None
+    message_attributes: dict[str, dict] | None = None
 
 
 @router.post("/sqs/send")
@@ -224,8 +225,8 @@ async def receive_sqs_messages(
 # SNS Routes
 class SNSMessageRequest(BaseModel):
     message: str
-    subject: Optional[str] = None
-    message_attributes: Optional[Dict[str, Dict]] = None
+    subject: str | None = None
+    message_attributes: dict[str, dict] | None = None
 
 
 @router.post("/sns/publish")
@@ -250,8 +251,8 @@ async def publish_sns_message(
 # Secrets Manager Routes
 class SecretRequest(BaseModel):
     name: str
-    value: Dict[str, Any]
-    description: Optional[str] = None
+    value: dict[str, Any]
+    description: str | None = None
 
 
 @router.post("/secrets")
@@ -291,7 +292,7 @@ async def get_secret(
 # Lambda Routes
 class LambdaInvokeRequest(BaseModel):
     function_name: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     invocation_type: str = "RequestResponse"
 
 
@@ -320,7 +321,7 @@ class MetricRequest(BaseModel):
     name: str
     value: float
     unit: str = "Count"
-    dimensions: Optional[List[Dict[str, str]]] = None
+    dimensions: list[dict[str, str]] | None = None
 
 
 @router.post("/cloudwatch/metric")
@@ -370,9 +371,9 @@ async def get_log_events(
     current_user: User = Depends(get_current_active_superuser),
 ):
     """Get recent log events."""
-    from datetime import datetime, timezone, timedelta
-    
-    start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+    from datetime import datetime, timedelta
+
+    start_time = datetime.now(UTC) - timedelta(hours=hours)
     events = await cloudwatch_service.get_log_events(
         start_time=start_time,
         limit=limit,

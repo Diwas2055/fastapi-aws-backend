@@ -1,0 +1,236 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastapi-aws-backend"
+version = "1.0.0"
+description = "Production-ready FastAPI backend with AWS integrations"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Developer", email = "dev@example.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: FastAPI",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+dependencies = [
+    "fastapi==0.115.0",
+    "uvicorn[standard]==0.32.0",
+    "pydantic==2.9.2",
+    "pydantic-settings==2.6.1",
+    "python-multipart==0.0.9",
+    "sqlalchemy==2.0.36",
+    "alembic==1.13.2",
+    "asyncpg==0.29.0",
+    "psycopg2-binary==2.9.10",
+    "redis==5.2.0",
+    "boto3==1.35.40",
+    "aioboto3==12.3.0",
+    "botocore==1.35.40",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "python-dotenv==1.0.1",
+    "structlog==24.1.0",
+    "tenacity==8.3.0",
+    "email-validator==2.2.0",
+    "celery==5.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.23.7",
+    "pytest-cov==6.0.0",
+    "pytest-watch==4.4.0",
+    "httpx==0.27.2",
+    "moto==4.2.13",
+    "ruff==0.7.3",
+    "mypy==1.11.2",
+    "pre-commit==3.8.0",
+    "bandit==1.7.8",
+    "detect-secrets==1.5.0",
+    "pyupgrade==3.15.2",
+    "reorder-python-imports==3.13.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/fastapi-aws-backend"
+Repository = "https://github.com/example/fastapi-aws-backend"
+Issues = "https://github.com/example/fastapi-aws-backend/issues"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+indent-style = "space"
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "T20", # flake8-print
+    "ARG", # flake8-unused-arguments
+    "PTH", # flake8-use-pathlib
+    "ERA", # eradicate
+    "PL",  # pylint
+    "TRY", # tryceratops
+    "TCH", # type-checking
+    "RUF", # ruff-specific
+    "RET", # return statements
+    "PD",  # pandas-vet
+    "PGH", # pygrep-hooks
+    "PIE", # flake8-pie
+    "PT",  # flake8-parameter-type
+    "Q",   # flake8-quotes
+    "RSE", # flake8-raise
+    "SLF", # self-logger
+    "SLOT",# slots
+    "TID", # flake8-tidy-imports
+    "TRY", # tryceratops
+    "FLY", # flynt
+    "NPY", # numpy
+    "BLE", # blind-except
+    "D",   # pydocstyle
+]
+ignore = [
+    "D100",  # Missing docstring for public module
+    "D101",  # Missing docstring for public class
+    "D102",  # Missing docstring for public method
+    "D103",  # Missing docstring for public function
+    "D104",  # Missing docstring for public package
+    "D105",  # Missing docstring for magic method
+    "D107",  # Missing docstring for __init__
+    "S101",  # assert statements (used in tests)
+]
+per-file-ignores = {
+    "tests/*": ["S101", "D100", "D101", "D102", "D103"],
+    "migrations/*": ["D100", "D101", "D102", "D103"],
+}
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+import-strategy = "from_import"
+section-order = ["future", "standard-library", "third-party", "first-party", "local"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+ignore_missing_imports = true
+namespace_packages = true
+
+[tool.mypy.plugins]
+sqlalchemy = "sqlalchemy.ext.mypy.plugin"
+
+[[tool.mypy.overrides]]
+module = [
+    "pydantic*",
+    "fastapi*",
+    "sqlalchemy*",
+    "alembic*",
+    "boto3*",
+    "aioboto3*",
+    "celery*",
+    "redis*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    "-ra",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "slow: Slow tests",
+    "aws: Tests requiring AWS services",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "*/tests/*",
+    "*/migrations/*",
+    "*/__pycache__/*",
+]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+precision = 2
+
+[tool.bandit]
+exclude_dirs = ["tests", "migrations"]
+skips = ["B101", "B601"]
+confidence_level = "medium"
+severity_level = "medium"
+
+[tool.detect-secrets]
+exclude_files = [
+    "package-lock.json",
+    "yarn.lock",
+    "*.min.js",
+    "*.min.css",
+]
+plugins_used = [
+    {"name": "Base64HighEntropyString", "limit": 4.5},
+    {"name": "HexHighEntropyString", "limit": 3.0},
+    {"name": "AWSKeyDetector"},
+    {"name": "BasicAuthDetector"},
+    {"name": "KeywordDetector"},
+    {"name": "PrivateKeyDetector"},
+    {"name": "ArtifactoryDetector"},
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*", "migrations*", "scripts*", "infrastructure*"]
+
+[tool.setuptools.package-dir]
+"" = "."

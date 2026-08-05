@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.db.session import close_db, engine, init_db
 from app.services import setup_opentelemetry, shutdown_opentelemetry
+from app.services.aws_init_service import initialize_aws_services
 
 # Configure logging
 configure_logging()
@@ -29,6 +30,10 @@ async def lifespan(app: FastAPI):
     # Initialize database
     await init_db()
     logger.info("Database initialized")
+
+    # Initialize AWS services (create buckets, tables, queues, topics)
+    if settings.ENVIRONMENT != "production":
+        await initialize_aws_services()
 
     # Initialize SigNoz observability
     setup_opentelemetry(app=app, engine=engine)

@@ -1,16 +1,24 @@
 """AWS services initialization for development with LocalStack."""
 
 from app.core.logging import get_logger
-from app.services.aws import dynamodb_service, s3_service, sns_service, sqs_service
+from app.services.aws import dynamodb_service, lambda_service, s3_service, sns_service, sqs_service
 
 logger = get_logger(__name__)
+
+DEFAULT_LAMBDA_CODE = """def handler(event, context):
+    return {
+        'statusCode': 200,
+        'body': 'Hello from Lambda!'
+    }
+"""
 
 
 async def initialize_aws_services() -> None:
     """Initialize AWS resources needed for development.
 
-    Creates S3 bucket, DynamoDB table, SQS queue, and SNS topic
-    if they do not already exist. Only runs in non-production environments.
+    Creates S3 bucket, DynamoDB table, SQS queue, SNS topic,
+    and a sample Lambda function if they do not already exist.
+    Only runs in non-production environments.
     """
     logger.info("Initializing AWS services for development")
 
@@ -35,5 +43,29 @@ async def initialize_aws_services() -> None:
     topic_arn = await sns_service.create_topic(topic_name)
     if topic_arn:
         logger.info("SNS topic ready", topic=topic_name, arn=topic_arn)
+
+    # Lambda function
+    function_name = "fastapi-aws-backend-lambda"
+    role = "arn:aws:iam::000000000000:role/lambda-ex"
+    existing = await lambda_service.get_function(function_name)
+    if existing and existing.get("Configuration"):
+        logger.info("Lambda function already exists", function=function_name)
+    else:
+        created = await lambda_service.create_function(
+            function_name=function_name,
+            runtime="python3.12",
+            role=role,
+            handler="lambda_function.handler",
+            code=DEFAULT_LAMBDA_CODE,
+            description="Sample Lambda function for development",
+            timeout=30,
+            memory_size=128,
+            environment={
+                "AWS_ENDPOINT_URL": settings.AWS_ENDPOINT_URL or "http://localhost:4566",
+                "AWS_REGION": settings.AWS_REGION,
+            },
+        )
+        if created:
+            logger.info("Lambda function ready", function=function_name, arn=created.get("FunctionArn"))
 
     logger.info("AWS services initialization complete")

@@ -57,7 +57,7 @@ All under `/api/v1/aws`. Require superuser JWT.
 | SQS | `POST /sqs/send`, `POST /sqs/receive` |
 | SNS | `POST /sns/publish` |
 | Secrets Manager | `POST /secrets`, `GET /secrets/{name}` |
-| Lambda | `POST /lambda/invoke` |
+| Lambda | `POST /lambda/invoke`, `POST /lambda/functions`, `GET /lambda/functions`, `POST /lambda/functions/{id}/aliases`, `POST /lambda/functions/{id}/event-source-mappings`, `POST /lambda/layers`, `POST /lambda/functions/{id}/concurrency`, `POST /lambda/functions/{id}/permissions` |
 | CloudWatch | `POST /cloudwatch/metric`, `POST /cloudwatch/log`, `GET /cloudwatch/logs` |
 
 ## Running Locally with LocalStack

@@ -107,7 +107,25 @@ Container start ──▶ IAM role → SecretsManager.get_secret("fastapi/prod")
         └── DB password, JWT secret, API keys loaded into settings (cached)
 ```
 
-### Flow 4 — Observability (CloudWatch + SigNoz)
+### Flow 4 — Serverless processing (Lambda)
+
+```
+FastAPI ──▶ Lambda.invoke(payload)
+              │
+              ├── Sync (RequestResponse) ──▶ result returned
+              ├── Async (Event) ──▶ background execution
+              ├── Version + Alias ──▶ stable prod/staging endpoints
+              ├── Event Source Mapping ──▶ SQS/SNS/DynamoDB → Lambda
+              └── Layers ──▶ shared dependencies across functions
+```
+
+Lambda replaces long-running API tasks with short-lived functions:
+- Thumbnail generation from S3 uploads
+- Report exports and data transformations
+- Event-driven processing from SQS/SNS/DynamoDB
+- Scheduled cleanup jobs via CloudWatch Events
+
+### Flow 5 — Observability (CloudWatch + SigNoz)
 
 ```
 Every request ──▶ structured JSON log ──▶ CloudWatch Logs
@@ -120,7 +138,7 @@ CloudWatch handles AWS-native metrics and alarms. SigNoz handles application-lev
 - Metrics include RED (Rate, Errors, Duration) for every endpoint
 - Logs are correlated with traces via trace IDs
 
-### Flow 5 — Flexible hot data (DynamoDB)
+### Flow 6 — Flexible hot data (DynamoDB)
 
 ```
 POST /aws/dynamodb/items ──▶ put_item(pk, sk, data, gsi1pk, gsi1sk)

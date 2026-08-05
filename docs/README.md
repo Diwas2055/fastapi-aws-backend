@@ -19,7 +19,8 @@ Guides for every AWS service used in this project. Each guide explains what the 
 | 11 | Terraform (infrastructure) | [terraform-guide.md](terraform-guide.md) |
 | 12 | Serverless (Lambda + API Gateway) | [serverless-guide.md](serverless-guide.md) |
 | 13 | CI/CD Pipeline | [cicd-guide.md](cicd-guide.md) |
-| 14 | All services together | [aws-architecture.md](aws-architecture.md) |
+| 14 | AWS Troubleshooting | [aws-troubleshooting.md](aws-troubleshooting.md) |
+| 15 | All services together | [aws-architecture.md](aws-architecture.md) |
 
 ## Environment Variables by Service
 

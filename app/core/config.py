@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     S3_BUCKET: str = "fastapi-uploads"
     S3_PRESIGNED_URL_EXPIRY: int = 3600
     S3_MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+    S3_MULTIPART_THRESHOLD: int = 100 * 1024 * 1024  # 100MB
+    S3_MULTIPART_PART_SIZE: int = 50 * 1024 * 1024  # 50MB
+    S3_MULTIPART_MAX_CONCURRENCY: int = 4
 
     # DynamoDB
     DYNAMODB_TABLE: str = "fastapi-items"

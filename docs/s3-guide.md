@@ -34,10 +34,13 @@ S3_MAX_FILE_SIZE: int = 10 * 1024 * 1024   # 10 MB
 ```
 
 | Config | Default | Purpose |
-|--------|---------|---------|
+|--------|---------|-------|
 | `S3_BUCKET` | `fastapi-uploads` | Bucket name |
 | `S3_PRESIGNED_URL_EXPIRY` | `3600` | Seconds a presigned URL stays valid |
 | `S3_MAX_FILE_SIZE` | `10 MB` | Upload size limit (checked before upload) |
+| `S3_MULTIPART_THRESHOLD` | `100 MB` | Files above this size use multipart upload |
+| `S3_MULTIPART_PART_SIZE` | `50 MB` | Size of each part in multipart upload |
+| `S3_MULTIPART_MAX_CONCURRENCY` | `4` | Max concurrent part uploads |
 | `AWS_REGION` | `us-east-1` | Bucket region |
 | `AWS_ENDPOINT_URL` | `http://localhost:4566` | LocalStack endpoint for dev |
 
@@ -58,6 +61,13 @@ class S3Service:
     async def get_file_metadata(key) -> dict | None
     async def copy_file(source_key, dest_key, source_bucket=None) -> bool
     def generate_unique_key(filename, prefix="") -> str
+
+    # Multipart upload for large files (100GB+)
+    async def initiate_multipart_upload(key, content_type, metadata=None) -> dict
+    async def generate_presigned_upload_part_url(key, upload_id, part_number, expires_in=None) -> str
+    async def complete_multipart_upload(key, upload_id, parts) -> dict
+    async def abort_multipart_upload(key, upload_id) -> bool
+    async def list_multipart_uploads(max_uploads=100) -> list
 ```
 
 Uses aioboto3 (async AWS SDK) with `s3_service = S3Service()` as the global instance.
@@ -98,6 +108,54 @@ url = await s3_service.generate_presigned_download_url(item.s3_key)
 # -> https://bucket.s3.amazonaws.com/items/123/abc.pdf?X-Amz-...
 ```
 
+### 4. Multipart upload for large files (100GB+)
+
+For files larger than 100MB, use multipart upload. The client splits the file into parts and uploads them in parallel.
+
+```python
+# Step 1: Initiate multipart upload
+init = await s3_service.initiate_multipart_upload(
+    key="uploads/large-video.mp4",
+    content_type="video/mp4",
+    metadata={"uploaded_by": str(user_id)},
+)
+upload_id = init["upload_id"]
+key = init["key"]
+
+# Step 2: Calculate parts (client-side)
+file_size = 100 * 1024 * 1024 * 1024  # 100GB
+part_size = 50 * 1024 * 1024  # 50MB
+total_parts = (file_size + part_size - 1) // part_size
+
+# Step 3: Get presigned URLs for each part
+part_urls = []
+for part_number in range(1, total_parts + 1):
+    url = await s3_service.generate_presigned_upload_part_url(
+        key=key,
+        upload_id=upload_id,
+        part_number=part_number,
+    )
+    part_urls.append({"part_number": part_number, "url": url})
+
+# Client uploads each part directly to S3 using the presigned URL
+# After each upload, client captures the ETag from the response header
+
+# Step 4: Complete the upload
+parts = [
+    {"PartNumber": 1, "ETag": "abc123..."},
+    {"PartNumber": 2, "ETag": "def456..."},
+    # ... all parts
+]
+result = await s3_service.complete_multipart_upload(
+    key=key,
+    upload_id=upload_id,
+    parts=parts,
+)
+
+# Step 5 (optional): Abort if something goes wrong
+# await s3_service.abort_multipart_upload(key=key, upload_id=upload_id)
+```
+
 ### 4. Delete files (single / batch)
 
 ```python
@@ -117,6 +175,11 @@ await s3_service.delete_files(["a.pdf", "b.pdf", "c.pdf"])
 | `POST` | `/api/v1/items/{item_id}/upload-url` | User (owner) | Presigned URL for item file |
 | `POST` | `/api/v1/items/upload` | User | Direct file upload |
 | `GET` | `/api/v1/items/{item_id}/download` | User (owner) | Presigned download URL |
+| `POST` | `/api/v1/aws/s3/multipart/initiate` | Superuser | Start multipart upload |
+| `GET` | `/api/v1/aws/s3/multipart/upload-part-url` | Superuser | Get presigned URL for a part |
+| `POST` | `/api/v1/aws/s3/multipart/complete` | Superuser | Complete multipart upload |
+| `DELETE` | `/api/v1/aws/s3/multipart/abort` | Superuser | Abort multipart upload |
+| `GET` | `/api/v1/aws/s3/multipart/uploads` | Superuser | List active multipart uploads |
 
 ## LocalStack Setup
 
@@ -167,6 +230,8 @@ aws --endpoint-url=http://localhost:4566 s3 cp s3://fastapi-uploads/test.txt -
 6. **Server-side encryption** — enable SSE-S3 or SSE-KMS on the bucket.
 7. **Block public access** — enable the "Block Public Access" settings.
 8. **Enable CloudTrail** — audit who accessed objects.
+9. **Multipart upload limits** — set `S3_MULTIPART_MAX_CONCURRENCY` to control parallel uploads.
+10. **Abort incomplete uploads** — use lifecycle rules or the abort endpoint to clean up stalled multipart uploads.
 
 ## Common Errors
 
@@ -177,6 +242,9 @@ aws --endpoint-url=http://localhost:4566 s3 cp s3://fastapi-uploads/test.txt -
 | `NoSuchKey` | Object doesn't exist | Verify key path |
 | `Presigned URL expired` | URL older than expiry | Generate a new URL |
 | `EntityTooLarge` | File exceeds 5GB | Use multipart upload |
+| `NoSuchUpload` | Upload ID not found | Verify upload ID or re-initiate |
+| `InvalidPart` | Part number/ETag mismatch | Retry the failed part |
+| `MissingUploadId` | Upload ID not provided | Include upload_id in request |
 
 ---
 

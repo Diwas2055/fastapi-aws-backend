@@ -9,7 +9,7 @@ A production-ready FastAPI backend with comprehensive AWS service integrations, 
 - **Redis** - Caching and Celery broker
 - **JWT Authentication** - Access/refresh tokens with secure storage
 - **AWS Services Integration**:
-  - **S3** - File storage with presigned URLs
+  - **S3** - File storage with presigned URLs and multipart upload for 100GB+ files
   - **DynamoDB** - NoSQL database with GSI support
   - **SQS** - Message queuing for async processing
   - **SNS** - Pub/Sub notifications
@@ -223,6 +223,11 @@ aws-fastapi-backend/
 | POST | `/api/v1/aws/s3/bucket` | Create S3 bucket |
 | GET | `/api/v1/aws/s3/files` | List S3 files |
 | POST | `/api/v1/aws/s3/upload-url` | Get S3 presigned URL |
+| POST | `/api/v1/aws/s3/multipart/initiate` | Start multipart upload |
+| GET | `/api/v1/aws/s3/multipart/upload-part-url` | Get presigned URL for a part |
+| POST | `/api/v1/aws/s3/multipart/complete` | Complete multipart upload |
+| DELETE | `/api/v1/aws/s3/multipart/abort` | Abort multipart upload |
+| GET | `/api/v1/aws/s3/multipart/uploads` | List active multipart uploads |
 | POST | `/api/v1/aws/dynamodb/table` | Create DynamoDB table |
 | POST | `/api/v1/aws/dynamodb/items` | Put DynamoDB item |
 | POST | `/api/v1/aws/sqs/send` | Send SQS message |
@@ -779,6 +784,9 @@ jobs:
 | `S3_BUCKET` | fastapi-uploads | S3 bucket name |
 | `S3_PRESIGNED_URL_EXPIRY` | 3600 | Presigned URL expiry (seconds) |
 | `S3_MAX_FILE_SIZE` | 10485760 | Max file size (10MB) |
+| `S3_MULTIPART_THRESHOLD` | 104857600 | Multipart threshold (100MB) |
+| `S3_MULTIPART_PART_SIZE` | 52428800 | Part size for multipart (50MB) |
+| `S3_MULTIPART_MAX_CONCURRENCY` | 4 | Max concurrent part uploads |
 
 ### DynamoDB
 | Variable | Default | Description |
@@ -839,6 +847,28 @@ jobs:
 |----------|---------|-------------|
 | `CELERY_BROKER_URL` | redis://localhost:6379/0 | Broker URL |
 | `CELERY_RESULT_BACKEND` | redis://localhost:6379/0 | Result backend |
+
+## Large File Uploads (100GB+)
+
+For files larger than 100MB, use S3 multipart upload. The API exposes these endpoints:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/aws/s3/multipart/initiate` | Start multipart upload |
+| `GET` | `/api/v1/aws/s3/multipart/upload-part-url` | Get presigned URL for a part |
+| `POST` | `/api/v1/aws/s3/multipart/complete` | Complete multipart upload |
+| `DELETE` | `/api/v1/aws/s3/multipart/abort` | Abort multipart upload |
+| `GET` | `/api/v1/aws/s3/multipart/uploads` | List active multipart uploads |
+
+### Flow
+
+1. Call `POST /api/v1/aws/s3/multipart/initiate` with `filename`, `content_type`, and optional `prefix`/`metadata`
+2. Receive `upload_id` and `key`
+3. Calculate parts client-side and request presigned part URLs
+4. Upload each part directly to S3
+5. Call `POST /api/v1/aws/s3/multipart/complete` with `parts` array containing `PartNumber` and `ETag`
+
+See [S3 Guide](docs/s3-guide.md) for code examples.
 
 ## Troubleshooting
 
@@ -904,6 +934,38 @@ sudo chown -R $USER:$USER .
 sudo docker-compose up -d
 ```
 
+### AWS Service Issues
+
+**S3 AccessDenied**
+- Verify IAM policy includes `s3:PutObject`, `s3:GetObject`, `s3:ListBucket`
+- Check bucket policy and block public access settings
+- Verify presigned URL hasn't expired
+
+**S3 Multipart Upload Stalled**
+- List active uploads: `aws s3 list-multipart-uploads --bucket <bucket>`
+- Abort stale uploads: `aws s3 abort-multipart-upload --bucket <bucket> --key <key> --upload-id <id>`
+- Set lifecycle rule to auto-abort uploads older than 7 days
+
+**DynamoDB Throttling**
+- Switch to on-demand mode or increase provisioned capacity
+- Add exponential backoff retry logic
+- Check hot partitions with CloudWatch
+
+**SQS Messages Not Received**
+- Check visibility timeout — increase if processing takes long
+- Verify queue URL matches in `.env`
+- Review DLQ for failed messages
+
+**Lambda Timeouts**
+- Increase timeout in Terraform/Serverless config (max 900s)
+- Check memory allocation — more memory = more CPU
+- Review CloudWatch logs for bottleneck
+
+**LocalStack Docker Socket Error (macOS)**
+- Ensure `DISABLE_MACHINE_CONFIG=1` and `MOUNT_ROOT=/tmp/localstack`
+- Mount `/var/run/docker.sock:/var/run/docker.sock`
+- Pin to `localstack/localstack:3.6` to avoid auth token requirement
+
 ### Debug Mode
 
 Enable debug logging:
@@ -924,6 +986,8 @@ curl http://localhost:8000/health/detailed
 curl http://localhost:8000/ready
 curl http://localhost:8000/live
 ```
+
+For comprehensive AWS troubleshooting, see [AWS Troubleshooting Guide](docs/aws-troubleshooting.md).
 
 ## Contributing
 

@@ -1,7 +1,8 @@
 """S3 service for file storage operations."""
 
+import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, BinaryIO
 from uuid import uuid4
 
@@ -76,8 +77,8 @@ class S3Service:
         content_type: str,
         expires_in: int | None = None,
     ) -> str:
-        """Generate a presigned URL for uploading a file."""
-        expires_in = expires_in or settings.S3_PRESIGNED_URL_EXPIRY
+        """Generate a presigned upload URL."""
+        expires_in = expires_in or self.settings.S3_PRESIGNED_URL_EXPIRY
 
         async with self.get_client() as client:
             return await client.generate_presigned_url(
@@ -96,7 +97,7 @@ class S3Service:
         expires_in: int | None = None,
     ) -> str:
         """Generate a presigned URL for downloading a file."""
-        expires_in = expires_in or settings.S3_PRESIGNED_URL_EXPIRY
+        expires_in = expires_in or self.settings.S3_PRESIGNED_URL_EXPIRY
 
         async with self.get_client() as client:
             return await client.generate_presigned_url(
@@ -250,6 +251,113 @@ class S3Service:
             key = f"{key}.{ext}"
 
         return key
+
+    async def initiate_multipart_upload(
+        self,
+        key: str,
+        content_type: str,
+        metadata: dict | None = None,
+    ) -> dict:
+        """Initiate a multipart upload and return upload ID."""
+        async with self.get_client() as client:
+            params: dict[str, Any] = {
+                "Bucket": self.bucket_name,
+                "Key": key,
+            }
+            if content_type:
+                params["ContentType"] = content_type
+            if metadata:
+                params["Metadata"] = metadata
+
+            response = await client.create_multipart_upload(**params)
+
+        logger.info("Multipart upload initiated", key=key, upload_id=response["UploadId"])
+        return {
+            "upload_id": response["UploadId"],
+            "key": key,
+            "bucket": self.bucket_name,
+        }
+
+    async def generate_presigned_upload_part_url(
+        self,
+        key: str,
+        upload_id: str,
+        part_number: int,
+        expires_in: int | None = None,
+    ) -> str:
+        """Generate presigned URL for uploading a specific part."""
+        expires_in = expires_in or self.settings.S3_PRESIGNED_URL_EXPIRY
+        async with self.get_client() as client:
+            return await client.generate_presigned_url(
+                "upload_part",
+                Params={
+                    "Bucket": self.bucket_name,
+                    "Key": key,
+                    "UploadId": upload_id,
+                    "PartNumber": part_number,
+                },
+                ExpiresIn=expires_in,
+            )
+
+    async def complete_multipart_upload(
+        self,
+        key: str,
+        upload_id: str,
+        parts: list[dict[str, Any]],
+    ) -> dict:
+        """Complete a multipart upload after all parts are uploaded."""
+        async with self.get_client() as client:
+            response = await client.complete_multipart_upload(
+                Bucket=self.bucket_name,
+                Key=key,
+                UploadId=upload_id,
+                MultipartUpload={
+                    "Parts": sorted(parts, key=lambda p: p["PartNumber"])
+                },
+            )
+
+        logger.info("Multipart upload completed", key=key, upload_id=upload_id)
+        return {
+            "key": key,
+            "bucket": self.bucket_name,
+            "location": response["Location"],
+            "etag": response["ETag"],
+        }
+
+    async def abort_multipart_upload(self, key: str, upload_id: str) -> bool:
+        """Abort an incomplete multipart upload."""
+        try:
+            async with self.get_client() as client:
+                await client.abort_multipart_upload(
+                    Bucket=self.bucket_name,
+                    Key=key,
+                    UploadId=upload_id,
+                )
+            logger.info("Multipart upload aborted", key=key, upload_id=upload_id)
+            return True
+        except ClientError as e:
+            logger.error("Failed to abort multipart upload", key=key, error=str(e))
+            return False
+
+    async def list_multipart_uploads(self, max_uploads: int = 100) -> list[dict]:
+        """List active multipart uploads."""
+        async with self.get_client() as client:
+            response = await client.list_multipart_uploads(
+                Bucket=self.bucket_name,
+                MaxUploads=max_uploads,
+            )
+
+        uploads = []
+        for upload in response.get("Uploads", []):
+            uploads.append(
+                {
+                    "key": upload["Key"],
+                    "upload_id": upload["UploadId"],
+                    "initiated": upload["Initiated"],
+                }
+            )
+
+        return uploads
 
 
 # Global S3 service instance

@@ -109,6 +109,100 @@ async def get_s3_upload_url(
     }
 
 
+class MultipartInitRequest(BaseModel):
+    filename: str
+    content_type: str
+    prefix: str = ""
+    metadata: dict[str, str] | None = None
+
+
+class MultipartInitResponse(BaseModel):
+    upload_id: str
+    key: str
+    bucket: str
+
+
+class MultipartPartResponse(BaseModel):
+    part_number: int
+    presigned_url: str
+
+
+class MultipartCompleteRequest(BaseModel):
+    key: str
+    upload_id: str
+    parts: list[dict[str, Any]]
+
+
+@router.post("/s3/multipart/initiate", response_model=MultipartInitResponse)
+async def initiate_multipart_upload(
+    request: MultipartInitRequest,
+    current_user: User = Depends(get_current_active_superuser_or_dev),
+):
+    """Initiate a multipart upload for large files (>100MB)."""
+    key = s3_service.generate_unique_key(request.filename, request.prefix)
+    result = await s3_service.initiate_multipart_upload(
+        key=key,
+        content_type=request.content_type,
+        metadata=request.metadata,
+    )
+    return MultipartInitResponse(**result)
+
+
+@router.get("/s3/multipart/upload-part-url")
+async def get_multipart_upload_part_url(
+    key: str,
+    upload_id: str,
+    part_number: int = Query(..., ge=1, le=10000),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
+):
+    """Get presigned URL for uploading a specific part."""
+    url = await s3_service.generate_presigned_upload_part_url(
+        key=key,
+        upload_id=upload_id,
+        part_number=part_number,
+    )
+    return MultipartPartResponse(part_number=part_number, presigned_url=url)
+
+
+@router.post("/s3/multipart/complete")
+async def complete_multipart_upload(
+    request: MultipartCompleteRequest,
+    current_user: User = Depends(get_current_active_superuser_or_dev),
+):
+    """Complete a multipart upload after all parts are uploaded."""
+    result = await s3_service.complete_multipart_upload(
+        key=request.key,
+        upload_id=request.upload_id,
+        parts=request.parts,
+    )
+    return result
+
+
+@router.delete("/s3/multipart/abort")
+async def abort_multipart_upload(
+    key: str,
+    upload_id: str,
+    current_user: User = Depends(get_current_active_superuser_or_dev),
+):
+    """Abort an incomplete multipart upload."""
+    success = await s3_service.abort_multipart_upload(key=key, upload_id=upload_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to abort multipart upload",
+        )
+    return {"message": "Multipart upload aborted"}
+
+
+@router.get("/s3/multipart/uploads")
+async def list_multipart_uploads(
+    current_user: User = Depends(get_current_active_superuser_or_dev),
+):
+    """List active multipart uploads."""
+    uploads = await s3_service.list_multipart_uploads()
+    return {"uploads": uploads}
+
+
 # DynamoDB Routes
 class DynamoDBItemRequest(BaseModel):
     pk: str

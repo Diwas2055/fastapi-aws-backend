@@ -134,3 +134,27 @@ variable "enable_signoz" {
   type        = bool
   default     = true
 }
+
+variable "terraform_state_bucket" {
+  description = "S3 bucket for Terraform state"
+  type        = string
+  default     = "fastapi-terraform-state"
+}
+
+variable "terraform_state_key" {
+  description = "S3 key for Terraform state"
+  type        = string
+  default     = "terraform/terraform.tfstate"
+}
+
+variable "terraform_state_region" {
+  description = "AWS region for Terraform state bucket"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "terraform_state_dynamodb_table" {
+  description = "DynamoDB table for Terraform state locking"
+  type        = string
+  default     = "fastapi-terraform-locks"
+}

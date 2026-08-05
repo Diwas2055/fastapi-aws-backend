@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_sqs_queue" "main" {
   name                      = "${var.project_name}-${var.environment}-queue-${var.unique_suffix}"
   visibility_timeout_seconds = 300
@@ -8,6 +12,26 @@ resource "aws_sqs_queue" "main" {
     deadLetterTargetArn = aws_sqs_queue.dlq.arn
     maxReceiveCount     = 3
   })
+
+  policy = var.sqs_queue_arn != null ? jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowSNSDelivery"
+        Effect = "Allow"
+        Principal = {
+          Service = "sns.amazonaws.com"
+        }
+        Action   = "sqs:SendMessage"
+        Resource = aws_sqs_queue.main.arn
+        Condition = {
+          ArnEquals = {
+            "aws:SourceArn" = var.sqs_queue_arn
+          }
+        }
+      }
+    ]
+  }) : null
 
   tags = {
     Name = "${local.name_prefix}-sqs"

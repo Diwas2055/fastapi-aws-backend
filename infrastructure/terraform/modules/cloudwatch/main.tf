@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 # Main application log group
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/aws/fastapi/${local.name_prefix}"
@@ -33,8 +37,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    ClusterName = "fastapi-aws-backend-dev"
-    ServiceName = "fastapi-aws-backend-dev-service"
+    ClusterName = var.ecs_service_name
+    ServiceName = var.ecs_service_name
   }
 }
 
@@ -52,8 +56,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_memory_high" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    ClusterName = "fastapi-aws-backend-dev"
-    ServiceName = "fastapi-aws-backend-dev-service"
+    ClusterName = var.ecs_service_name
+    ServiceName = var.ecs_service_name
   }
 }
 
@@ -71,7 +75,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_response_time_high" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = "fastapi-aws-backend-dev-alb"
+    LoadBalancer = var.alb_arn_suffix
   }
 }
 
@@ -89,7 +93,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    DBInstanceIdentifier = "fastapi-aws-backend-dev-db"
+    DBInstanceIdentifier = var.rds_instance_id
   }
 }
 
@@ -107,11 +111,15 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_host" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = "fastapi-aws-backend-dev-alb"
-    TargetGroup  = "fastapi-aws-backend-dev-tg"
+    LoadBalancer = var.alb_arn_suffix
+    TargetGroup  = "${var.alb_arn_suffix}/${var.ecs_service_name}"
   }
 }
 
 output "log_group_name" {
   value = aws_cloudwatch_log_group.app.name
+}
+
+output "log_group_arn" {
+  value = aws_cloudwatch_log_group.app.arn
 }

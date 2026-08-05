@@ -6,24 +6,21 @@ variable "environment" {
   type = string
 }
 
-variable "name_prefix" {
-  type = string
-}
-
 variable "unique_suffix" {
   type = string
 }
 
-variable "vpc_id" {
+variable "vpc_cidr" {
   type = string
 }
 
-variable "private_subnet_ids" {
+variable "availability_zones" {
   type = list(string)
 }
 
-variable "signoz_security_group_id" {
-  type = string
+variable "container_port" {
+  type    = number
+  default = 8000
 }
 
 variable "enable_signoz" {

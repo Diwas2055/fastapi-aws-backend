@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 data "archive_file" "lambda" {
   type        = "zip"
   output_path = "${path.module}/lambda_function.zip"
@@ -27,14 +31,12 @@ resource "aws_lambda_function" "main" {
     variables = {
       AWS_REGION            = data.aws_region.current.name
       S3_BUCKET            = var.s3_bucket_name
-      DYNAMODB_TABLE       = var.dynamodb_table_arn
+      DYNAMODB_TABLE       = var.dynamodb_table_name
       SQS_QUEUE_URL        = var.sqs_queue_url
       SNS_TOPIC_ARN        = var.sns_topic_arn
       CLOUDWATCH_LOG_GROUP = var.cloudwatch_log_group_arn
     }
   }
-
-  depends_on = [aws_iam_role_policy_attachment.lambda_vpc]
 
   tags = {
     Name = "${local.name_prefix}-lambda"

@@ -55,11 +55,6 @@ def setup_opentelemetry(app=None, engine=None, redis_client=None) -> None:
 
         trace.set_tracer_provider(trace_provider)
 
-        # Instrument FastAPI
-        if app is not None:
-            FastAPIInstrumentor.instrument_app(app)
-            logger.info("FastAPI instrumentation enabled")
-
         # Instrument HTTPX
         HTTPXClientInstrumentor().instrument()
         logger.info("HTTPX instrumentation enabled")

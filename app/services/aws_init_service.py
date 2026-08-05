@@ -1,5 +1,6 @@
 """AWS services initialization for development with LocalStack."""
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.aws import dynamodb_service, lambda_service, s3_service, sns_service, sqs_service
 

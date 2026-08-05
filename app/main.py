@@ -6,12 +6,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.api import auth, aws, health, items, users
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.db.session import close_db, engine, init_db
-from app.services import setup_opentelemetry, shutdown_opentelemetry
+from app.services import shutdown_opentelemetry
 from app.services.aws_init_service import initialize_aws_services
 
 # Configure logging
@@ -36,7 +37,8 @@ async def lifespan(app: FastAPI):
         await initialize_aws_services()
 
     # Initialize SigNoz observability
-    setup_opentelemetry(app=app, engine=engine)
+    from app.services.signoz_service import setup_opentelemetry
+    setup_opentelemetry(engine=engine)
 
     yield
 
@@ -57,6 +59,11 @@ app = FastAPI(
     openapi_url="/openapi.json" if settings.DEBUG else None,
     lifespan=lifespan,
 )
+
+# Initialize SigNoz observability before app starts
+if settings.SIGNOZ_ENABLED:
+    FastAPIInstrumentor.instrument_app(app)
+    get_logger(__name__).info("SigNoz FastAPI instrumentation enabled")
 
 # Add middleware
 app.add_middleware(

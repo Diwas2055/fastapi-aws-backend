@@ -151,6 +151,51 @@ async def get_current_active_superuser(
     return current_user
 
 
+async def get_current_active_superuser_or_dev(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """Allow superuser auth, or bypass for local development.
+
+    In development mode, returns a lightweight fake user instead of requiring
+    a real JWT. Production always requires real authentication.
+    """
+    if settings.is_development:
+        return User(
+            id=UUID("00000000-0000-0000-0000-000000000000"),
+            email="dev@local",
+            is_superuser=True,
+            is_active=True,
+        )
+    if not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+    return current_user
+
+
+async def get_current_active_superuser_or_dev(
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Allow superuser auth, or bypass for local development.
+
+    In development mode, returns a lightweight fake user instead of requiring
+    a real JWT. Production always requires real authentication.
+    """
+    if settings.is_development:
+        return User(
+            id=UUID("00000000-0000-0000-0000-000000000000"),
+            email="dev@local",
+            is_superuser=True,
+            is_active=True,
+        )
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 async def create_refresh_token_db(
     db: AsyncSession,
     user: User,

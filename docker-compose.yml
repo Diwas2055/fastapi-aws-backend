@@ -42,13 +42,12 @@ services:
   # LocalStack for AWS services simulation (development)
   localstack:
     container_name: '${LOCALSTACK_DOCKER_NAME:-localstack-main}'
-    image: localstack/localstack:latest
+    image: localstack/localstack:3.6
     ports:
       - '127.0.0.1:4566:4566' # LocalStack Gateway
       - '127.0.0.1:4510-4559:4510-4559' # external services port range
-      - '127.0.0.1:443:443' # LocalStack HTTPS Gateway
     environment:
-      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:-} # optional for Community Edition
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:-}
       - SERVICES=s3,dynamodb,sqs,sns,secretsmanager,lambda,cloudwatch,iam,sts
       - DEBUG=${DEBUG:-0}
       - AWS_DEFAULT_REGION=us-east-1
@@ -61,6 +60,7 @@ services:
       - DISABLE_MACHINE_CONFIG=1
     volumes:
       - '${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack'
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
       interval: 10s
@@ -165,8 +165,21 @@ services:
       - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infrastructure/nginx/conf.d:/etc/nginx/conf.d:ro
       - ./infrastructure/ssl:/etc/nginx/ssl:ro
+      - certbot-webroot:/var/www/certbot
     depends_on:
       - app
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Certbot - Let's Encrypt SSL certificates
+  certbot:
+    image: certbot/certbot:latest
+    container_name: fastapi-certbot
+    volumes:
+      - certbot-data:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - app-network
     restart: unless-stopped
@@ -192,6 +205,8 @@ volumes:
   redis_data:
   localstack_data:
   signoz_data:
+  certbot-data:
+  certbot-webroot:
 
 networks:
   app-network:

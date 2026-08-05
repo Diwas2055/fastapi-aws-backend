@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_instance" "signoz" {
   count         = var.enable_signoz ? 1 : 0
   ami           = data.aws_ami.ubuntu.id

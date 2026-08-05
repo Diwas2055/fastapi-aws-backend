@@ -188,3 +188,18 @@ docs:
 	@echo "  http://localhost:8000/docs (Swagger UI)"
 	@echo "  http://localhost:8000/redoc (ReDoc)"
 	@echo "  http://localhost:8000/openapi.json (OpenAPI Spec)"
+
+# SSL
+ssl-generate:
+	bash scripts/generate-ssl.sh
+
+ssl-setup:
+	bash scripts/ssl-setup.sh
+
+ssl-renew:
+	docker-compose exec certbot certbot renew --quiet
+	docker-compose exec nginx nginx -s reload
+
+ssl-test:
+	@echo "Testing HTTPS..."
+	curl -k https://localhost/health || true

@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_db_subnet_group" "main" {
   name       = "${local.name_prefix}-db-subnet-group"
   subnet_ids = var.private_subnet_ids
@@ -34,6 +38,20 @@ resource "aws_db_instance" "main" {
   tags = {
     Name = "${local.name_prefix}-rds"
   }
+}
+
+resource "aws_secretsmanager_secret" "db_password" {
+  name_prefix = "${local.name_prefix}-db-password-"
+  description = "Database password for ${local.name_prefix}"
+
+  tags = {
+    Name = "${local.name_prefix}-db-password"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "db_password" {
+  secret_id     = aws_secretsmanager_secret.db_password.id
+  secret_string = var.db_password
 }
 
 resource "aws_iam_role" "rds_monitoring" {
@@ -103,4 +121,8 @@ output "db_instance_port" {
 
 output "db_subnet_group_name" {
   value = aws_db_subnet_group.main.name
+}
+
+output "db_password_secret_arn" {
+  value = aws_secretsmanager_secret.db_password.arn
 }

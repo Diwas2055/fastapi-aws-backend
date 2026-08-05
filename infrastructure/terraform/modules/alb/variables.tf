@@ -6,6 +6,10 @@ variable "environment" {
   type = string
 }
 
+variable "name_prefix" {
+  type = string
+}
+
 variable "unique_suffix" {
   type = string
 }
@@ -22,10 +26,6 @@ variable "alb_security_group_id" {
   type = string
 }
 
-variable "ecs_target_group_arn" {
-  type = string
-}
-
 variable "domain_name" {
   type    = string
   default = ""
@@ -34,4 +34,9 @@ variable "domain_name" {
 variable "certificate_arn" {
   type    = string
   default = ""
+}
+
+variable "enable_signoz" {
+  type    = bool
+  default = false
 }

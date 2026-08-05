@@ -21,7 +21,7 @@ db_allocated_storage = 20
 db_max_allocated_storage = 100
 db_name = "fastapi_app"
 db_username = "postgres"
-db_password = "CHANGE_ME_USE_SECURE_PASSWORD"
+db_password = "REPLACE_WITH_SECURE_PASSWORD"
 
 # Redis
 redis_node_type = "cache.t3.micro"
@@ -37,3 +37,9 @@ log_retention_in_days = 30
 
 # SigNoz
 enable_signoz = true
+
+# Terraform State Backend
+terraform_state_bucket = "fastapi-terraform-state"
+terraform_state_key = "terraform/terraform.tfstate"
+terraform_state_region = "us-east-1"
+terraform_state_dynamodb_table = "fastapi-terraform-locks"

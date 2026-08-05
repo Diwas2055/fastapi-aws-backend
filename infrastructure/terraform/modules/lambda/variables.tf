@@ -8,6 +8,10 @@ variable "environment" {
   type = string
 }
 
+variable "name_prefix" {
+  type = string
+}
+
 variable "unique_suffix" {
   type = string
 }
@@ -29,6 +33,10 @@ variable "s3_bucket_name" {
 }
 
 variable "dynamodb_table_arn" {
+  type = string
+}
+
+variable "dynamodb_table_name" {
   type = string
 }
 

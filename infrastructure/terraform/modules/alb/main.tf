@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_lb" "main" {
   name               = "${local.name_prefix}-alb-${var.unique_suffix}"
   internal           = false

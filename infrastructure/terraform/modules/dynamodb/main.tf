@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_dynamodb_table" "main" {
   name         = "${var.project_name}-${var.environment}-items-${var.unique_suffix}"
   billing_mode  = "PAY_PER_REQUEST"

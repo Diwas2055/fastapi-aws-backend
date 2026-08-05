@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 # ECS Task Execution Role
 resource "aws_iam_role" "ecs_execution" {
   name = "${local.name_prefix}-ecs-execution-role"
@@ -134,6 +138,14 @@ resource "aws_iam_policy" "app_services" {
           "logs:PutLogEvents"
         ]
         Resource = var.cloudwatch_log_group_arn
+      },
+      {
+        Sid    = "SecretsManagerAccess"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = var.db_password_secret_arn
       }
     ]
   })

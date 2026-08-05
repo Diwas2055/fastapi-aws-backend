@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_sns_topic" "main" {
   name = "${var.project_name}-${var.environment}-notifications-${var.unique_suffix}"
 

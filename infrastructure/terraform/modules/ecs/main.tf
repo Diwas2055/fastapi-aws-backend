@@ -1,3 +1,9 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
+data "aws_region" "current" {}
+
 # ECS Cluster
 resource "aws_ecs_cluster" "main" {
   name = "${local.name_prefix}-cluster"
@@ -79,6 +85,12 @@ resource "aws_ecs_task_definition" "main" {
         {
           name  = "CLOUDWATCH_LOG_GROUP"
           value = var.cloudwatch_log_group_arn
+        }
+      ]
+      secrets = [
+        {
+          name      = "DATABASE_PASSWORD"
+          valueFrom = var.db_password_secret_arn
         }
       ]
       logConfiguration = {

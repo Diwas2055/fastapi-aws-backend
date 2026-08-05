@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.core.logging import get_logger
-from app.core.security import get_current_active_superuser
+from app.core.security import get_current_active_superuser_or_dev
 from app.models import User
 from app.services.aws import (
     cloudwatch_service,
@@ -33,7 +33,7 @@ logger = get_logger(__name__)
 @router.post("/s3/bucket", status_code=status.HTTP_201_CREATED)
 async def create_s3_bucket(
     bucket_name: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Create S3 bucket."""
     success = await s3_service.create_bucket(bucket_name)
@@ -49,7 +49,7 @@ async def create_s3_bucket(
 async def list_s3_files(
     prefix: str = "",
     max_keys: int = 100,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """List files in S3 bucket."""
     files = await s3_service.list_files(prefix=prefix, max_keys=max_keys)
@@ -59,7 +59,7 @@ async def list_s3_files(
 @router.get("/s3/files/{key:path}")
 async def get_s3_file(
     key: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get file metadata from S3."""
     metadata = await s3_service.get_file_metadata(key)
@@ -74,7 +74,7 @@ async def get_s3_file(
 @router.delete("/s3/files/{key:path}")
 async def delete_s3_file(
     key: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Delete file from S3."""
     success = await s3_service.delete_file(key)
@@ -91,7 +91,7 @@ async def get_s3_upload_url(
     filename: str,
     content_type: str,
     prefix: str = "",
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get presigned upload URL."""
     key = s3_service.generate_unique_key(filename, prefix)
@@ -126,7 +126,7 @@ class DynamoDBQueryRequest(BaseModel):
 
 @router.post("/dynamodb/table", status_code=status.HTTP_201_CREATED)
 async def create_dynamodb_table(
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Create DynamoDB table."""
     success = await dynamodb_service.create_table()
@@ -141,7 +141,7 @@ async def create_dynamodb_table(
 @router.post("/dynamodb/items")
 async def put_dynamodb_item(
     item: DynamoDBItemRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Put item in DynamoDB."""
     success = await dynamodb_service.put_item(
@@ -163,7 +163,7 @@ async def put_dynamodb_item(
 async def get_dynamodb_item(
     pk: str,
     sk: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get item from DynamoDB."""
     item = await dynamodb_service.get_item(pk, sk)
@@ -178,7 +178,7 @@ async def get_dynamodb_item(
 @router.post("/dynamodb/query")
 async def query_dynamodb(
     query: DynamoDBQueryRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Query DynamoDB items."""
     return await dynamodb_service.query_items(
@@ -198,7 +198,7 @@ class SQSMessageRequest(BaseModel):
 @router.post("/sqs/send")
 async def send_sqs_message(
     message: SQSMessageRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Send message to SQS queue."""
     result = await sqs_service.send_message(
@@ -218,7 +218,7 @@ async def send_sqs_message(
 async def receive_sqs_messages(
     max_messages: int = Query(10, ge=1, le=10),
     wait_time: int = Query(20, ge=0, le=20),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Receive messages from SQS queue."""
     messages = await sqs_service.receive_messages(
@@ -238,7 +238,7 @@ class SNSMessageRequest(BaseModel):
 @router.post("/sns/publish")
 async def publish_sns_message(
     message: SNSMessageRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Publish message to SNS topic."""
     result = await sns_service.publish(
@@ -264,7 +264,7 @@ class SecretRequest(BaseModel):
 @router.post("/secrets")
 async def create_secret(
     secret: SecretRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Create a secret."""
     arn = await secrets_manager_service.create_secret(
@@ -283,7 +283,7 @@ async def create_secret(
 @router.get("/secrets/{name}")
 async def get_secret(
     name: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get a secret."""
     value = await secrets_manager_service.get_secret(name)
@@ -299,7 +299,7 @@ async def get_secret(
 @router.post("/lambda/invoke")
 async def invoke_lambda(
     request: LambdaInvokeRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Invoke Lambda function (sync or async)."""
     result = await lambda_service.invoke(
@@ -321,7 +321,7 @@ async def invoke_lambda_with_retry(
     function_name: str,
     payload: dict[str, Any],
     max_retries: int = Query(3, ge=1, le=10),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Invoke Lambda with exponential backoff retry."""
     result = await lambda_service.invoke_with_retry(
@@ -340,7 +340,7 @@ async def invoke_lambda_with_retry(
 @router.post("/lambda/functions", status_code=status.HTTP_201_CREATED)
 async def create_lambda_function(
     config: LambdaFunctionConfig,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Create a new Lambda function."""
     result = await lambda_service.create_function(
@@ -371,7 +371,7 @@ async def create_lambda_function(
 @router.get("/lambda/functions")
 async def list_lambda_functions(
     max_items: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """List all Lambda functions."""
     result = await lambda_service.list_functions(max_items=max_items)
@@ -382,7 +382,7 @@ async def list_lambda_functions(
 async def get_lambda_function(
     function_name: str,
     qualifier: str | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get Lambda function details."""
     result = await lambda_service.get_function(function_name, qualifier=qualifier)
@@ -398,7 +398,7 @@ async def get_lambda_function(
 async def update_lambda_function(
     function_name: str,
     config: LambdaFunctionConfig,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Update Lambda function configuration."""
     result = await lambda_service.update_function_configuration(
@@ -427,7 +427,7 @@ async def update_lambda_function(
 async def delete_lambda_function(
     function_name: str,
     qualifier: str | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Delete a Lambda function."""
     success = await lambda_service.delete_function(function_name, qualifier=qualifier)
@@ -444,7 +444,7 @@ async def update_lambda_code(
     function_name: str,
     code: str,
     publish: bool = False,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Update Lambda function code from inline source code."""
     zip_bytes = lambda_service._build_zip_package(code)
@@ -465,7 +465,7 @@ async def update_lambda_code(
 async def publish_lambda_version(
     function_name: str,
     description: str | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Publish a new Lambda function version."""
     result = await lambda_service.publish_version(function_name, description=description)
@@ -481,7 +481,7 @@ async def publish_lambda_version(
 async def list_lambda_versions(
     function_name: str,
     max_items: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """List all versions of a Lambda function."""
     result = await lambda_service.list_versions_by_function(function_name, max_items=max_items)
@@ -495,7 +495,7 @@ async def create_lambda_alias(
     function_version: str = "$LATEST",
     description: str | None = None,
     routing_config: dict[str, Any] | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Create a Lambda alias (e.g., prod, staging)."""
     result = await lambda_service.create_alias(
@@ -517,7 +517,7 @@ async def create_lambda_alias(
 async def list_lambda_aliases(
     function_name: str,
     max_items: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """List all aliases for a Lambda function."""
     result = await lambda_service.list_aliases(function_name, max_items=max_items)
@@ -528,7 +528,7 @@ async def list_lambda_aliases(
 async def delete_lambda_alias(
     function_name: str,
     alias_name: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Delete a Lambda alias."""
     success = await lambda_service.delete_alias(function_name, alias_name)
@@ -544,7 +544,7 @@ async def delete_lambda_alias(
 async def create_event_source_mapping(
     function_name: str,
     config: EventSourceMappingConfig,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Create event source mapping between AWS service and Lambda."""
     result = await lambda_service.create_event_source_mapping(
@@ -568,7 +568,7 @@ async def create_event_source_mapping(
 async def list_event_source_mappings(
     function_name: str,
     max_items: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """List event source mappings for a Lambda function."""
     result = await lambda_service.list_event_source_mappings(
@@ -581,7 +581,7 @@ async def list_event_source_mappings(
 @router.delete("/lambda/event-source-mappings/{uuid}")
 async def delete_event_source_mapping(
     uuid: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Delete an event source mapping."""
     success = await lambda_service.delete_event_source_mapping(uuid)
@@ -599,7 +599,7 @@ async def publish_lambda_layer(
     code: str,
     description: str | None = None,
     compatible_runtimes: list[str] | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Publish a Lambda layer from inline code."""
     zip_bytes = lambda_service._build_layer_zip(python_libs=[code] if code else None)
@@ -620,7 +620,7 @@ async def publish_lambda_layer(
 @router.get("/lambda/layers")
 async def list_lambda_layers(
     max_items: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """List Lambda layers."""
     result = await lambda_service.list_layers(max_items=max_items)
@@ -631,7 +631,7 @@ async def list_lambda_layers(
 async def set_lambda_concurrency(
     function_name: str,
     reserved_concurrent_executions: int = Query(..., ge=0, le=1000),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Set reserved concurrency for a Lambda function."""
     result = await lambda_service.put_function_concurrency(
@@ -649,7 +649,7 @@ async def set_lambda_concurrency(
 @router.delete("/lambda/functions/{function_name}/concurrency")
 async def delete_lambda_concurrency(
     function_name: str,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Remove reserved concurrency from a Lambda function."""
     success = await lambda_service.delete_function_concurrency(function_name)
@@ -670,7 +670,7 @@ async def add_lambda_permission(
     source_arn: str | None = None,
     source_account: str | None = None,
     qualifier: str | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Add permission to Lambda function resource policy."""
     result = await lambda_service.add_permission(
@@ -695,7 +695,7 @@ async def remove_lambda_permission(
     function_name: str,
     statement_id: str,
     qualifier: str | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Remove permission from Lambda function resource policy."""
     success = await lambda_service.remove_permission(
@@ -715,7 +715,7 @@ async def remove_lambda_permission(
 async def get_lambda_policy(
     function_name: str,
     qualifier: str | None = None,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get Lambda function resource policy."""
     result = await lambda_service.get_policy(function_name, qualifier=qualifier)
@@ -739,7 +739,7 @@ class MetricRequest(BaseModel):
 @router.post("/cloudwatch/metric")
 async def put_metric(
     metric: MetricRequest,
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Put custom metric."""
     success = await cloudwatch_service.put_metric(
@@ -761,7 +761,7 @@ async def put_metric(
 async def put_log_event(
     message: str,
     level: str = "INFO",
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Put log event."""
     success = await cloudwatch_service.put_log_event(
@@ -780,7 +780,7 @@ async def put_log_event(
 async def get_log_events(
     hours: int = Query(1, ge=1, le=168),
     limit: int = Query(100, ge=1, le=1000),
-    current_user: User = Depends(get_current_active_superuser),
+    current_user: User = Depends(get_current_active_superuser_or_dev),
 ):
     """Get recent log events."""
     from datetime import datetime, timedelta

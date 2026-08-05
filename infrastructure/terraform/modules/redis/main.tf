@@ -1,3 +1,7 @@
+locals {
+  name_prefix = var.name_prefix
+}
+
 resource "aws_elasticache_subnet_group" "main" {
   name       = "${local.name_prefix}-cache-subnet-group"
   subnet_ids = var.private_subnet_ids
@@ -20,7 +24,7 @@ resource "aws_elasticache_replication_group" "main" {
   multi_az_enabled             = var.environment == "production"
   at_rest_encryption_enabled   = true
   transit_encryption_enabled   = true
-  auth_token                   = var.environment != "development" ? random_password.redis_auth[0].result : null
+  auth_token                   = var.environment != "dev" ? random_password.redis_auth[0].result : null
   snapshot_retention_limit     = var.environment == "production" ? 7 : 1
   snapshot_window              = "05:00-06:00"
   maintenance_window           = "sun:06:00-sun:07:00"
@@ -37,7 +41,7 @@ resource "aws_elasticache_replication_group" "main" {
 }
 
 resource "random_password" "redis_auth" {
-  count   = var.environment != "development" ? 1 : 0
+  count   = var.environment != "dev" ? 1 : 0
   length  = 32
   special = false
 }

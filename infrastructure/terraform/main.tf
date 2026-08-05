@@ -9,6 +9,9 @@ module "vpc" {
   vpc_cidr           = var.vpc_cidr
   availability_zones = var.availability_zones
   unique_suffix      = local.unique_suffix
+  name_prefix        = local.name_prefix
+  container_port     = var.container_port
+  enable_signoz      = var.enable_signoz
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -19,6 +22,7 @@ module "rds" {
 
   project_name          = var.project_name
   environment           = var.environment
+  name_prefix           = local.name_prefix
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.private_subnet_ids
   db_security_group_id  = module.vpc.db_security_group_id
@@ -40,6 +44,7 @@ module "redis" {
 
   project_name          = var.project_name
   environment           = var.environment
+  name_prefix           = local.name_prefix
   vpc_id                = module.vpc.vpc_id
   private_subnet_ids    = module.vpc.private_subnet_ids
   cache_security_group_id = module.vpc.cache_security_group_id
@@ -57,6 +62,7 @@ module "s3" {
 
   project_name = var.project_name
   environment  = var.environment
+  name_prefix  = local.name_prefix
   unique_suffix = local.unique_suffix
 }
 
@@ -68,6 +74,7 @@ module "dynamodb" {
 
   project_name = var.project_name
   environment  = var.environment
+  name_prefix  = local.name_prefix
   unique_suffix = local.unique_suffix
 }
 
@@ -79,6 +86,7 @@ module "sqs" {
 
   project_name = var.project_name
   environment  = var.environment
+  name_prefix  = local.name_prefix
   unique_suffix = local.unique_suffix
 }
 
@@ -90,6 +98,7 @@ module "sns" {
 
   project_name = var.project_name
   environment  = var.environment
+  name_prefix  = local.name_prefix
   unique_suffix = local.unique_suffix
   sqs_queue_arn = module.sqs.queue_arn
 }
@@ -102,6 +111,7 @@ module "iam" {
 
   project_name = var.project_name
   environment  = var.environment
+  name_prefix  = local.name_prefix
   unique_suffix = local.unique_suffix
 
   s3_bucket_arn       = module.s3.bucket_arn
@@ -109,6 +119,7 @@ module "iam" {
   sqs_queue_arn       = module.sqs.queue_arn
   sns_topic_arn       = module.sns.topic_arn
   cloudwatch_log_group_arn = module.cloudwatch.log_group_arn
+  db_password_secret_arn = module.rds.db_password_secret_arn
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -119,6 +130,7 @@ module "lambda" {
 
   project_name           = var.project_name
   environment            = var.environment
+  name_prefix            = local.name_prefix
   unique_suffix          = local.unique_suffix
   lambda_role_arn        = module.iam.lambda_execution_role_arn
   lambda_security_group_id = module.vpc.lambda_security_group_id
@@ -129,6 +141,7 @@ module "lambda" {
   sqs_queue_url          = module.sqs.queue_url
   sns_topic_arn          = module.sns.topic_arn
   cloudwatch_log_group_arn = module.cloudwatch.log_group_arn
+  dynamodb_table_name    = module.dynamodb.table_name
   runtime                = var.lambda_runtime
   memory_size            = var.lambda_memory_size
   timeout                = var.lambda_timeout
@@ -143,6 +156,7 @@ module "ecs" {
 
   project_name              = var.project_name
   environment               = var.environment
+  name_prefix               = local.name_prefix
   unique_suffix             = local.unique_suffix
   vpc_id                    = module.vpc.vpc_id
   public_subnet_ids         = module.vpc.public_subnet_ids
@@ -160,8 +174,10 @@ module "ecs" {
   sqs_queue_url             = module.sqs.queue_url
   sns_topic_arn             = module.sns.topic_arn
   cloudwatch_log_group_arn  = module.cloudwatch.log_group_arn
+  db_password_secret_arn    = module.rds.db_password_secret_arn
   log_retention_in_days     = var.log_retention_in_days
   desired_count             = var.environment == "production" ? 3 : 1
+  alb_target_group_arn      = module.alb.target_group_arn
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -172,13 +188,14 @@ module "alb" {
 
   project_name           = var.project_name
   environment            = var.environment
+  name_prefix            = local.name_prefix
   vpc_id                 = module.vpc.vpc_id
   public_subnet_ids      = module.vpc.public_subnet_ids
   alb_security_group_id  = module.vpc.alb_security_group_id
-  ecs_target_group_arn   = module.ecs.target_group_arn
   domain_name            = var.domain_name
   certificate_arn        = var.certificate_arn
   unique_suffix          = local.unique_suffix
+  enable_signoz          = var.enable_signoz
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -189,6 +206,7 @@ module "cloudwatch" {
 
   project_name           = var.project_name
   environment            = var.environment
+  name_prefix            = local.name_prefix
   unique_suffix          = local.unique_suffix
   alb_arn_suffix         = module.alb.alb_arn_suffix
   ecs_service_name       = module.ecs.service_name
@@ -206,8 +224,10 @@ module "signoz" {
 
   project_name           = var.project_name
   environment            = var.environment
+  name_prefix            = local.name_prefix
   vpc_id                 = module.vpc.vpc_id
   private_subnet_ids     = module.vpc.private_subnet_ids
   signoz_security_group_id = module.vpc.signoz_security_group_id
   unique_suffix          = local.unique_suffix
+  enable_signoz          = var.enable_signoz
 }

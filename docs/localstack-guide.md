@@ -302,6 +302,49 @@ docker-compose up -d localstack
 curl http://localhost:4566/_localstack/health
 ```
 
+### Fix Docker Mount Error on macOS
+
+If you see:
+```
+failed to create shim task: OCI runtime create failed
+error mounting ... machine.json ... mountpoint is outside of rootfs
+```
+
+This is a Docker Desktop on macOS issue with LocalStack's internal cache mount.
+
+**Fix:**
+
+```bash
+# Stop and remove everything
+docker-compose down -v
+
+# Remove the LocalStack volume directory if it exists
+rm -rf volume/
+
+# Recreate the volume directory with proper permissions
+mkdir -p volume
+chmod 755 volume
+
+# Start LocalStack again
+docker-compose up -d localstack
+```
+
+If the error persists, try:
+```bash
+# Clear Docker Desktop cache
+docker system prune -f
+
+# Restart Docker Desktop
+# Then run:
+docker-compose up -d localstack
+```
+
+The updated `docker-compose.yml` includes:
+- `MOUNT_ROOT=/tmp/localstack` — avoids the failing host cache mount
+- `DISABLE_MACHINE_CONFIG=1` — disables machine.json mounting
+- `DISABLE_CORS=1` — reduces potential issues
+- Removed `/var/run/docker.sock` mount — known to cause issues on macOS
+
 ## Next Steps
 
 - Read individual service guides (S3, DynamoDB, etc.) for LocalStack-specific tips

@@ -1,19 +1,18 @@
 # SNS — Pub/Sub Notifications
 
-## What is SNS?
+## What It Is
 
-**Amazon Simple Notification Service (SNS)** is a fully managed **publish/subscribe messaging service**. Producers publish messages to *topics*; SNS fans each message out to all *subscribers* (HTTP/S endpoints, SQS queues, Lambda functions, email, SMS, mobile push).
+Amazon Simple Notification Service (SNS) is a fully managed publish/subscribe messaging service. Producers publish messages to topics; SNS fans each message out to all subscribers (HTTP/S endpoints, SQS queues, Lambda functions, email, SMS, mobile push).
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, SNS is the **event/notification bus**:
-
+In this FastAPI backend, SNS is the event/notification bus:
 - Fan-out important events (order placed, user registered, item created) to multiple consumers at once
 - Trigger integrations: notify an SQS queue (async processing), a Lambda (reaction), an email/SMS (user notification)
 - Decouple event producers from consumers — adding a new subscriber requires no code change in the producer
 - Deliver with retries and configurable message filtering per subscription
 
-## How It Works in the App
+## How It Works
 
 ### Architecture
 
@@ -22,13 +21,13 @@ In this FastAPI backend, SNS is the **event/notification bus**:
 ┌──────────┐  ───────────────────▶ │   SNS       │
 │   App    │                       │   Topic     │
 └──────────┘                       └──────┬──────┘
-                                          │ fan-out
-                     ┌────────────────────┼─────────────────────┐
-                     ▼                    ▼                     ▼
-              ┌────────────┐       ┌────────────┐        ┌─────────────┐
-              │ SQS Queue   │       │ Lambda     │        │ Email / SMS │
-              │ (async work)│       │ (reaction) │        │ (notify user)│
-              └────────────┘       └────────────┘        └─────────────┘
+                                            │ fan-out
+                       ┌────────────────────┼─────────────────────┐
+                       ▼                    ▼                     ▼
+                ┌────────────┐       ┌────────────┐        ┌─────────────┐
+                │ SQS Queue   │       │ Lambda     │        │ Email / SMS │
+                │ (async work)│       │ (reaction) │        │ (notify user)│
+                └────────────┘       └────────────┘        └─────────────┘
 ```
 
 ### Topic Configuration
@@ -42,7 +41,7 @@ SNS_TOPIC_ARN: Optional[str] = None    # e.g., arn:aws:sns:us-east-1:00000000000
 |--------|---------|---------|
 | `SNS_TOPIC_ARN` | `None` | Topic ARN (must be set before publish/subscribe) |
 
-> Region comes from the shared `AWS_REGION` setting.
+Region comes from the shared `AWS_REGION` setting.
 
 ### Service Class
 
@@ -58,7 +57,7 @@ class SNSService:
     async def add_permission(label, aws_account_ids, actions, topic_arn=None) -> bool
 ```
 
-Uses **aioboto3** with `sns_service = SNSService()` global instance.
+Uses aioboto3 with `sns_service = SNSService()` global instance.
 
 ## Code Usage Examples
 
@@ -74,7 +73,7 @@ result = await sns_service.publish(
 # -> {"message_id": "..."}
 ```
 
-> `message` is a string. For structured events, publish a JSON string and have subscribers parse it (see example 3).
+`message` is a string. For structured events, publish a JSON string and have subscribers parse it.
 
 ### 2. Publish a batch of messages
 
@@ -141,7 +140,7 @@ await sns_service.add_permission(
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/v1/aws/sns/publish` | Superuser | Publish message (body: `message`, `subject`?, `message_attributes`?) |
+| `POST` | `/api/v1/aws/sns/publish` | Superuser | Publish message (body: `message`, `subject?`, `message_attributes?`) |
 
 ## LocalStack Setup
 
@@ -192,7 +191,7 @@ aws --endpoint-url=http://localhost:4566 sns subscribe \
 
 ## Best Practices
 
-1. **One event per message** — keep payloads small and semantic (`event`, `entity`, `payload`).
+1. **One event per message** — keep payloads small and semantic (event, entity, payload).
 2. **Use message attributes** for subscription filtering (deliver only relevant events to each subscriber).
 3. **Fan-out to SQS for async work** — SNS → SQS gives durability + retries + no lost messages.
 4. **Configure retry policies** — SNS retries failed HTTP/S and Lambda deliveries with exponential backoff.
@@ -209,8 +208,8 @@ aws --endpoint-url=http://localhost:4566 sns subscribe \
 | `AuthorizationError` | IAM lacks `sns:Publish` | Update IAM policy |
 | `InvalidParameter` | Bad subject/attrs | Validate message attributes types |
 | `SubscriptionLimitExceeded` | Too many subscribers | Reduce subscribers / raise limit |
-| Email not received | Email subscription unconfirmed | Click confirmation link sent to the address |
+| `Email not received` | Email subscription unconfirmed | Click confirmation link sent to the address |
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: Secrets Manager Guide](secrets-manager-guide.md)
+← Back to [Docs Index](README.md) · Next: [Secrets Manager Guide](secrets-manager-guide.md)

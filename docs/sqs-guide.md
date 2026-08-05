@@ -1,19 +1,18 @@
 # SQS — Message Queuing for Async Processing
 
-## What is SQS?
+## What It Is
 
-**Amazon Simple Queue Service (SQS)** is a fully managed message queue for decoupling application components. It lets you send, store, and receive messages between software components without losing messages or requiring each component to be always available.
+Amazon Simple Queue Service (SQS) is a fully managed message queue for decoupling application components. It lets you send, store, and receive messages between software components without losing messages or requiring each component to be always available.
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, SQS is the **asynchronous work queue**:
-
+In this FastAPI backend, SQS is the asynchronous work queue:
 - Offload long-running work (file processing, notifications, report generation) from the API request path
 - Buffer bursts of traffic — producers keep working even if consumers are down
 - Guarantee delivery — messages persist for up to 4–14 days until processed
 - Work with SNS (fan-out → queue subscription) and Celery workers as consumers
 
-## How It Works in the App
+## How It Works
 
 ### Architecture
 
@@ -21,7 +20,7 @@ In this FastAPI backend, SQS is the **asynchronous work queue**:
 ┌────────────┐   send_message   ┌─────────┐   receive + delete   ┌──────────────┐
 │  API / App │ ───────────────▶ │  SQS    │ ───────────────────▶ │ Celery Worker │
 └────────────┘                  │ Queue   │                      └──────────────┘
-       └── SNS fan-out ─────────▶│  Q1/Q2  │
+         └── SNS fan-out ─────────▶│  Q1/Q2  │
 ```
 
 - **Producer** (API): `sqs_service.send_message(...)` on request
@@ -57,7 +56,7 @@ class SQSService:
     async def get_queue_attributes(queue_url=None) -> dict | None
 ```
 
-Uses **aioboto3** with `sqs_service = SQSService()` global instance. Queue URL comes from `SQS_QUEUE_URL`; long-polling (`ReceiveMessageWaitTimeSeconds=20`) and 14-day retention are baked into `create_queue`.
+Uses aioboto3 with `sqs_service = SQSService()` global instance. Queue URL comes from `SQS_QUEUE_URL`; long-polling (`ReceiveMessageWaitTimeSeconds=20`) and 14-day retention are baked into `create_queue`.
 
 ## Code Usage Examples
 
@@ -98,7 +97,7 @@ for msg in messages:
         await sqs_service.change_visibility(msg["ReceiptHandle"], 60)  # retry later
 ```
 
-> The message **Body** is a JSON string — parse with `json.loads()`. Delete only after successful processing; otherwise the message reappears after the visibility timeout.
+The message `Body` is a JSON string — parse with `json.loads()`. Delete only after successful processing; otherwise the message reappears after the visibility timeout.
 
 ### 4. Batch delete / inspect the queue
 
@@ -123,7 +122,7 @@ await sns_service.publish('{"order_id": 1}')
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/v1/aws/sqs/send` | Superuser | Send message (body: `message_body`, `delay_seconds`?, `message_attributes`?) |
+| `POST` | `/api/v1/aws/sqs/send` | Superuser | Send message (body: `message_body`, `delay_seconds?`, `message_attributes?`) |
 | `POST` | `/api/v1/aws/sqs/receive?max_messages=&wait_time=` | Superuser | Receive messages (query params; `max_messages` 1–10, `wait_time` 0–20) |
 
 ### Example request
@@ -190,8 +189,8 @@ aws --endpoint-url=http://localhost:4566 sqs delete-message \
 1. **Long polling** (`WaitTimeSeconds=20`) — reduces empty receives and API calls (cost savings).
 2. **Visibility timeout** ≈ processing time × 6 — prevents a slow consumer from being retried prematurely.
 3. **Dead-letter queue (DLQ)** — set `maxReceiveCount` (5) and route failures to a DLQ for inspection.
-4. **Idempotent consumers** — SQS delivers *at least once*; your worker must tolerate duplicates (e.g., dedupe by message ID or business key).
-5. **`ReceiptHandle` delete after processing** — only delete when the work completed successfully.
+4. **Idempotent consumers** — SQS delivers at least once; your worker must tolerate duplicates (e.g., dedupe by message ID or business key).
+5. **ReceiptHandle delete after processing** — only delete when the work completed successfully.
 6. **Delay queues / message timers** — schedule work up to 15 minutes ahead.
 7. **Batch with care** — `send_message_batch` max 10 messages, 256 KB per message, 1 MB per batch.
 8. **Never put secrets in messages** — messages are not encrypted by default; use KMS encryption for sensitive payloads.
@@ -208,4 +207,4 @@ aws --endpoint-url=http://localhost:4566 sqs delete-message \
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: SNS Guide](sns-guide.md)
+← Back to [Docs Index](README.md) · Next: [SNS Guide](sns-guide.md)

@@ -1,18 +1,17 @@
 # Lambda — Serverless Function Invocation
 
-## What is Lambda?
+## What It Is
 
-**AWS Lambda** is a serverless compute service that runs your code in response to events without provisioning or managing servers. You pay only for compute time while your code runs (100 ms increments). Lambdas are commonly triggered by API Gateway, S3 events, SNS/SQS messages, DynamoDB Streams, or scheduled CloudWatch Events.
+AWS Lambda runs your code in response to events without you managing servers. You pay only for the compute time while your code runs (billed in 100ms increments). Lambdas are triggered by API Gateway, S3 events, SNS/SQS messages, DynamoDB Streams, or scheduled CloudWatch Events.
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, Lambda is the **serverless reaction layer**:
+In this FastAPI backend, Lambda is the serverless reaction layer:
+- Run short functions from the API (image thumbnails, report exports, data enrichment)
+- Move expensive work off the API process so requests stay fast
+- Event-driven patterns: S3 upload → Lambda thumbnail, SNS publish → Lambda handler, scheduled cleanup
 
-- Invoke short-lived, event-driven functions from the API (e.g., image thumbnail generation, report export, data enrichment)
-- Delegate bursty or expensive compute off the API process so the request path stays fast
-- Enable the event-driven patterns: S3 upload → Lambda thumbnail, SNS publish → Lambda notification handler, scheduled Cron → Lambda cleanup
-
-## How It Works in the App
+## How It Works
 
 ### Architecture
 
@@ -52,7 +51,7 @@ class LambdaService:
     async def get_function(function_name) -> dict | None                       # Configuration
 ```
 
-Uses **aioboto3** with `lambda_service = LambdaService()` global instance.
+Uses aioboto3 with `lambda_service = LambdaService()` global instance.
 
 ## Code Usage Examples
 
@@ -107,7 +106,7 @@ await lambda_service.delete_function("thumbnail-generator")
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/v1/aws/lambda/invoke` | Superuser | Invoke function (body: `function_name`, `payload`, `invocation_type`? default `RequestResponse`) |
+| `POST` | `/api/v1/aws/lambda/invoke` | Superuser | Invoke function (body: `function_name`, `payload`, `invocation_type?` default `RequestResponse`) |
 
 ## LocalStack Setup
 
@@ -165,12 +164,12 @@ aws --endpoint-url=http://localhost:4566 lambda invoke \
 
 1. **Prefer async (Event) invocation** for fire-and-forget work — keeps API latency low.
 2. **Keep payloads small** — request payload limit is 6 MB (sync) / 256 KB (async).
-3. **Set timeouts & memory** — match function timeout to expected duration; over-allocating memory costs more.
+3. **Set timeouts and memory** — match function timeout to expected duration; over-allocating memory costs more.
 4. **Make functions idempotent** — events can be retried or delivered twice (SQS/SNS sources).
-5. **Use aliases/versions** — deploy to `$LATEST`, promote to `prod` alias; app invokes the stable alias.
-6. **CloudWatch for logging** — Lambda auto-logs to CloudWatch; keep `print`/logger in handler.
+5. **Use aliases/versions** — deploy to `$LATEST`, promote to prod alias; app invokes the stable alias.
+6. **CloudWatch for logging** — Lambda auto-logs to CloudWatch; keep print/logger in handler.
 7. **IAM least privilege** — give each Lambda only the permissions it needs (S3 read for thumbnails, etc.).
-8. **Concurrency & DLQs** — set reserved concurrency; use DLQs for async event sources to catch failures.
+8. **Concurrency and DLQs** — set reserved concurrency; use DLQs for async event sources to catch failures.
 9. **Warm-up for latency-sensitive paths** — provisioned concurrency removes cold starts for sync calls.
 
 ## Common Errors
@@ -186,4 +185,4 @@ aws --endpoint-url=http://localhost:4566 lambda invoke \
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: CloudWatch Guide](cloudwatch-guide.md)
+← Back to [Docs Index](README.md) · Next: [CloudWatch Guide](cloudwatch-guide.md)

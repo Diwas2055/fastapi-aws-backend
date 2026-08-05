@@ -1,19 +1,18 @@
 # CloudWatch — Monitoring and Logging
 
-## What is CloudWatch?
+## What It Is
 
-**Amazon CloudWatch** is AWS's monitoring and observability service. It collects and tracks **metrics**, **logs**, and **events** from AWS resources and your application, triggers **alarms**, and visualizes data in dashboards.
+Amazon CloudWatch is AWS's monitoring and observability service. It collects and tracks metrics, logs, and events from AWS resources and your application. It triggers alarms and visualizes data in dashboards.
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, CloudWatch is the **observability layer**:
-
+In this FastAPI backend, CloudWatch is the observability layer:
 - **Metrics** — emit custom application metrics (request counts, error rates, processing times, business events)
 - **Logs** — ship structured application logs (JSON) to CloudWatch Logs for search, retention, and alerting
 - **Alarms** — alert on anomalies (high error rate, latency spikes, queue depth)
 - **Dashboards** — one place to view app health, API performance, and AWS resource utilization
 
-## How It Works in the App
+## How It Works
 
 ### Architecture
 
@@ -65,7 +64,7 @@ class CloudWatchService:
     async def describe_alarms() -> list
 ```
 
-Uses **aioboto3** with `cloudwatch_service = CloudWatchService()` global instance. Two clients internally: `cloudwatch` (metrics/dashboards/alarms) and `logs` (logs).
+Uses aioboto3 with `cloudwatch_service = CloudWatchService()` global instance. Two clients internally: `cloudwatch` (metrics/dashboards/alarms) and `logs` (logs).
 
 ## Code Usage Examples
 
@@ -163,7 +162,7 @@ alarms = await cloudwatch_service.describe_alarms()
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/v1/aws/cloudwatch/metric` | Superuser | Emit metric (body: `namespace`, `name`, `value`, `unit`?, `dimensions`?) |
+| `POST` | `/api/v1/aws/cloudwatch/metric` | Superuser | Emit metric (body: `namespace`, `name`, `value`, `unit?`, `dimensions?`) |
 | `POST` | `/api/v1/aws/cloudwatch/log?message=&level=` | Superuser | Write log event (query params) |
 | `GET` | `/api/v1/aws/cloudwatch/logs?hours=&limit=` | Superuser | Fetch recent log events (query params; `hours` 1–168, `limit` 1–1000) |
 
@@ -235,7 +234,7 @@ aws --endpoint-url=http://localhost:4566 logs get-log-events \
 }
 ```
 
-> `logs:PutLogEvents` resource should be scoped to the specific log group/stream ARN when possible. `cloudwatch:PutMetricData` is always `*` (metrics have no ARN).
+`logs:PutLogEvents` resource should be scoped to the specific log group/stream ARN when possible. `cloudwatch:PutMetricData` is always `*` (metrics have no ARN).
 
 ## Best Practices
 
@@ -245,7 +244,7 @@ aws --endpoint-url=http://localhost:4566 logs get-log-events \
 4. **Never log secrets** — redact passwords, tokens, and PII before emitting logs.
 5. **Set alarms on business signals** — error rate, queue depth, 5xx count, and P99 latency (not just CPU).
 6. **Define retention** — set log retention (e.g., 30 days) to control cost; logs grow fast.
-7. **Tag metrics** — add dimensions (`service`, `environment`, `endpoint`) to slice/dice in dashboards.
+7. **Tag metrics** — add dimensions (service, environment, endpoint) to slice/dice in dashboards.
 8. **Use Logs Insights** for fast text search over large volumes instead of `get_log_events`.
 9. **Correlate with traces** — include request ID in every log line to link logs to specific requests.
 
@@ -257,9 +256,9 @@ aws --endpoint-url=http://localhost:4566 logs get-log-events \
 | `InvalidParameterValueException` | Bad unit/dimension | Validate metric names and units |
 | `DataAlreadyAcceptedException` | Replaying old log sequence token | Use latest `nextSequenceToken` |
 | `InvalidSequenceTokenException` | Sequence token out of order | Retry with the returned token |
-| `ThrottlingException` | Too many PutLogEvents | Batch logs and add backoff |
+| `ThrottlingException` | Too many `PutLogEvents` | Batch logs and add backoff |
 | `ServiceUnavailable` | Transient AWS issue | Retry with exponential backoff |
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: AWS Architecture Overview](aws-architecture.md)
+← Back to [Docs Index](README.md) · Next: [AWS Architecture Overview](aws-architecture.md)

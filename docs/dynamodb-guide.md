@@ -1,27 +1,26 @@
 # DynamoDB — NoSQL Database with GSI Support
 
-## What is DynamoDB?
+## What It Is
 
-**Amazon DynamoDB** is AWS's fully managed, serverless **NoSQL key-value and document database**. It delivers single-digit-millisecond performance at any scale, with automatic scaling, replication across three AZs, and on-demand capacity.
+Amazon DynamoDB is AWS's fully managed, serverless NoSQL key-value and document database. It delivers single-digit-millisecond performance at any scale, with automatic scaling, replication across three AZs, and on-demand capacity.
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, DynamoDB serves as the **high-throughput, low-latency data layer** for workloads that don't need SQL relations:
-
+In this FastAPI backend, DynamoDB serves as the high-throughput, low-latency data layer for workloads that don't need SQL relations:
 - Storing flexible, schema-less JSON documents (`data` field)
 - High-read/low-write access patterns (counters, session data, feature toggles, analytics events)
 - Complementing PostgreSQL: relational data stays in Postgres, hot/flexible data goes to DynamoDB
 
 ## Data Model — Single Table Design with GSI
 
-The app uses the recommended **single-table design** with a composite `pk`/`sk` key and one **Global Secondary Index (GSI1)** for alternative query patterns.
+The app uses the recommended single-table design with a composite `pk`/`sk` key and one **Global Secondary Index (GSI1)** for alternative query patterns.
 
 ### Table Structure
 
 | Attribute | Type | Key | Purpose |
 |-----------|------|-----|---------|
-| `pk` | String | **Partition Key (HASH)** | Primary access path (e.g., `USER#123`) |
-| `sk` | String | **Sort Key (RANGE)** | Ordering / grouping (e.g., `ITEM#456`) |
+| `pk` | String | Partition Key (HASH) | Primary access path (e.g., `USER#123`) |
+| `sk` | String | Sort Key (RANGE) | Ordering / grouping (e.g., `ITEM#456`) |
 | `gsi1pk` | String | GSI1 HASH | Alternate query path (e.g., `CATEGORY#electronics`) |
 | `gsi1sk` | String | GSI1 RANGE | GSI ordering |
 | `data` | Map | — | Flexible JSON payload |
@@ -38,7 +37,7 @@ USER#999 | ITEM#111 | {name: "Chair",  price: 299} | CATEGORY#furniture    | PRI
 - **Query 1**: "All items for user 123" → `query(pk=USER#123, sk_prefix=ITEM#)`
 - **Query 2**: "All electronics sorted by price" → `query_gsi1(gsi1pk=CATEGORY#electronics)`
 
-## How It Works in the App
+## How It Works
 
 ### Configuration
 
@@ -69,7 +68,7 @@ class DynamoDBService:
     async def batch_write(items) -> bool
 ```
 
-Uses **aioboto3** resources API with `dynamodb_service = DynamoDBService()` global instance.
+Uses aioboto3 resources API with `dynamodb_service = DynamoDBService()` global instance.
 
 ## Code Usage Examples
 
@@ -134,9 +133,9 @@ await dynamodb_service.batch_write([
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | `POST` | `/api/v1/aws/dynamodb/table` | Superuser | Create table |
-| `POST` | `/api/v1/aws/dynamodb/items` | Superuser | Put item (body: pk, sk, data, gsi1pk?, gsi1sk?) |
+| `POST` | `/api/v1/aws/dynamodb/items` | Superuser | Put item (body: `pk`, `sk`, `data`, `gsi1pk?`, `gsi1sk?`) |
 | `GET` | `/api/v1/aws/dynamodb/items/{pk}/{sk}` | Superuser | Get item |
-| `POST` | `/api/v1/aws/dynamodb/query` | Superuser | Query (body: pk, sk_prefix?, limit?) |
+| `POST` | `/api/v1/aws/dynamodb/query` | Superuser | Query (body: `pk`, `sk_prefix?`, `limit?`) |
 
 ## LocalStack Setup
 
@@ -213,4 +212,4 @@ aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name fastapi-item
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: SQS Guide](sqs-guide.md)
+← Back to [Docs Index](README.md) · Next: [SQS Guide](sqs-guide.md)

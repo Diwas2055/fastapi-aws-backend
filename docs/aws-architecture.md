@@ -1,27 +1,27 @@
 # AWS Architecture Overview
 
-This document explains how all seven AWS services fit together in the FastAPI backend, the shared infrastructure (boto3 client setup, IAM, endpoints), and the event-driven flows that connect them.
+How the AWS services in this project fit together, shared infrastructure, and the event flows between them.
 
-## The Big Picture
+## System Layout
 
 ```
                                     ┌────────────────────────────────────────────┐
                                     │                AWS Cloud                  │
                                     │                                            │
    HTTPS  ┌──────────────┐          │   ┌──────────────────────────────────┐     │
-─────────▶│    ALB /      │────────▶│   │  FastAPI Service (ECS on Fargate) │    │
-          │  Nginx (SSL)  │          │   │                                  │    │
-          └──────────────┘          │   │  app/services/aws/*_service.py   │    │
-                                    │   │                                  │    │
-                                    │   │  ┌───────┐  ┌──────┐  ┌───────┐  │    │
-                                    │   │  │  S3   │  │Dynamo│  │  SQS  │  │    │
-                                    │   │  └───────┘  └──────┘  └───────┘  │    │
-                                    │   │  ┌───────┐  ┌──────┐  ┌───────┐  │    │
-                                    │   │  │  SNS  │  │Secrets│  │Lambda │  │    │
-                                    │   │  └───────┘  └──────┘  └───────┘  │    │
-                                    │   │  ┌────────────────────────────┐  │    │
-                                    │   │  │        CloudWatch          │  │    │
-                                    │   │  └────────────────────────────┘  │    │
+─────────▶│    ALB /      │────────▶│   │  FastAPI Service (ECS on Fargate) │     │
+         │  Nginx (SSL)  │          │   │                                  │     │
+         └──────────────┘          │   │  app/services/aws/*_service.py   │     │
+                                    │   │                                  │     │
+                                    │   │  ┌───────┐  ┌──────┐  ┌───────┐  │     │
+                                    │   │  │  S3   │  │Dynamo│  │  SQS  │  │     │
+                                    │   │  └───────┘  └──────┘  └───────┘  │     │
+                                    │   │  ┌───────┐  ┌──────┐  ┌───────┐  │     │
+                                    │   │  │  SNS  │  │Secrets│  │Lambda │  │     │
+                                    │   │  └───────┘  └──────┘  └───────┘  │     │
+                                    │   │  ┌────────────────────────────┐  │     │
+                                    │   │  │        CloudWatch          │  │     │
+                                    │   │  └────────────────────────────┘  │     │
                                     │   └──────────────────────────────────┘     │
                                     │                                            │
                                     │   ┌──────────┐  ┌───────┐  ┌───────────┐   │
@@ -31,17 +31,18 @@ This document explains how all seven AWS services fit together in the FastAPI ba
                                     └────────────────────────────────────────────┘
 ```
 
-**Layers:**
-1. **Edge** — ALB / Nginx terminates TLS, proxies to FastAPI (see `infrastructure/nginx/`).
-2. **Application** — FastAPI app; all AWS access goes through the service classes in `app/services/aws/`.
+## Layers
+
+1. **Edge** — ALB / Nginx handles HTTPS, proxies to FastAPI (see `infrastructure/nginx/`).
+2. **Application** — FastAPI app; all AWS calls go through service classes in `app/services/aws/`.
 3. **Data** — PostgreSQL (RDS, relational), DynamoDB (NoSQL/hot data), S3 (objects/files), Redis (cache/queues).
 4. **Async** — Celery workers + SQS queue + SNS fan-out + Lambda reactions.
-5. **Security** — Secrets Manager (vault), IAM roles (authN/Z), JWT (app authN).
+5. **Security** — Secrets Manager (vault), IAM roles (AWS access), JWT (app access).
 6. **Observability** — CloudWatch (metrics, logs, alarms), structured logging.
 
 ## Shared AWS Client Setup
 
-All services build on a shared **aioboto3** session configured once in `app/core/config.py`:
+All services use one shared aioboto3 session configured in `app/core/config.py`:
 
 ```python
 # app/services/aws/__init__.py
@@ -57,48 +58,23 @@ lambda_service        = LambdaService()
 cloudwatch_service    = CloudWatchService()
 ```
 
-**One session, seven clients** — shared `AWS_REGION`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (or role), and `AWS_ENDPOINT_URL` (LocalStack in dev):
+One session, seven clients. Shared `AWS_REGION`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` (or IAM role), and `AWS_ENDPOINT_URL` (LocalStack in dev):
 
 | Setting | Dev | Production |
 |---------|-----|-----------|
-| `AWS_ENDPOINT_URL` | `http://localhost:4566` | *(unset)* → real AWS |
+| `AWS_ENDPOINT_URL` | `http://localhost:4566` | unset → real AWS |
 | Credentials | LocalStack dummy keys | IAM role (ECS task role) |
 | Region | `us-east-1` | your deploy region |
 
-## Routing & Access Control
+## Routing and Access Control
 
-All AWS endpoints live under `/api/v1/aws/*` and require a **superuser** JWT:
+All AWS endpoints are under `/api/v1/aws/*` and require a superuser JWT.
 
-```
-app/api/aws.py  →  APIRouter(prefix="/api/v1/aws", dependencies=[Depends(get_current_user), Depends(require_superuser)])
-```
+Business endpoints (items, users, auth) live under `/api/v1/items`, `/api/v1/users`, `/api/v1/auth` and are not superuser-gated.
 
-| Method | Path | Service |
-|--------|------|---------|
-| `POST` | `/aws/s3/bucket` | S3 |
-| `GET` | `/aws/s3/files` | S3 |
-| `GET` | `/aws/s3/files/{key}` | S3 |
-| `DELETE` | `/aws/s3/files/{key}` | S3 |
-| `POST` | `/aws/s3/upload-url` | S3 |
-| `POST` | `/aws/dynamodb/table` | DynamoDB |
-| `POST` | `/aws/dynamodb/items` | DynamoDB |
-| `GET` | `/aws/dynamodb/items/{pk}/{sk}` | DynamoDB |
-| `POST` | `/aws/dynamodb/query` | DynamoDB |
-| `POST` | `/aws/sqs/send` | SQS |
-| `POST` | `/aws/sqs/receive` | SQS |
-| `POST` | `/aws/sns/publish` | SNS |
-| `POST` | `/aws/secrets` | Secrets Manager |
-| `GET` | `/aws/secrets/{name}` | Secrets Manager |
-| `POST` | `/aws/lambda/invoke` | Lambda |
-| `POST` | `/aws/cloudwatch/metric` | CloudWatch |
-| `POST` | `/aws/cloudwatch/log` | CloudWatch |
-| `GET` | `/aws/cloudwatch/logs` | CloudWatch |
+## Event Flows
 
-Business-facing endpoints (items, users, auth) live under `/api/v1/items`, `/api/v1/users`, `/api/v1/auth` and are **not** superuser-gated.
-
-## Event-Driven Flows
-
-### Flow 1 — File upload → async processing (S3 + SQS + Celery)
+### Flow 1 — File upload to async processing (S3 + SQS + Celery)
 
 ```
 POST /items/upload ──▶ S3 (store object)
@@ -113,11 +89,11 @@ POST /items/upload ──▶ S3 (store object)
 
 ```
 Item created ──▶ SNS.publish({event: "item.created"})
-                      │ fan-out
-        ┌─────────────┼───────────────────┐
-        ▼             ▼                   ▼
-     SQS queue    Lambda (thumbnail/      Email/SMS
-     (Celery)      enrichment)            (user notify)
+                       │ fan-out
+         ┌─────────────┼───────────────────┐
+         ▼             ▼                   ▼
+      SQS queue    Lambda (thumbnail/      Email/SMS
+      (Celery)      enrichment)            (user notify)
 ```
 
 ### Flow 3 — Secure bootstrap (Secrets Manager)
@@ -131,7 +107,7 @@ Container start ──▶ IAM role → SecretsManager.get_secret("fastapi/prod")
 
 ```
 Every request ──▶ structured JSON log ──▶ CloudWatch Logs
-                     └── custom metrics (RequestCount, ErrorCount, latency) ──▶ Metrics + Alarms ──▶ SNS
+                      └── custom metrics (RequestCount, ErrorCount, latency) ──▶ Metrics + Alarms ──▶ SNS
 ```
 
 ### Flow 5 — Flexible hot data (DynamoDB)
@@ -142,30 +118,30 @@ GET  /aws/dynamodb/items/{pk}/{sk} ──▶ get_item
 POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alternative access)
 ```
 
-## Production Deployment Map (docker-compose.prod.yml)
+## Production Components
 
 | Component | AWS Service | Notes |
 |-----------|-------------|-------|
 | FastAPI app | ECS on Fargate (or EKS) | Multi-stage Docker build, health checks |
 | PostgreSQL | RDS | Managed, Multi-AZ, encrypted |
 | Redis | ElastiCache | Celery broker + result backend |
-| Object storage | S3 | `fastapi-uploads` bucket |
-| NoSQL | DynamoDB | `fastapi-items` table + GSI1 |
-| Queues | SQS | `fastapi-queue`, DLQ configured |
-| Notifications | SNS | `fastapi-notifications` topic |
-| Secrets | Secrets Manager | `fastapi/prod`, rotation via Lambda |
+| Object storage | S3 | fastapi-uploads bucket |
+| NoSQL | DynamoDB | fastapi-items table + GSI1 |
+| Queues | SQS | fastapi-queue, DLQ configured |
+| Notifications | SNS | fastapi-notifications topic |
+| Secrets | Secrets Manager | fastapi/prod, rotation via Lambda |
 | Serverless | Lambda | thumbnail/reactor/export functions |
 | Monitoring | CloudWatch | Logs, metrics, alarms → SNS |
-| Load balancer | ALB + Nginx | TLS termination, `/health` probe |
-| AuthN for AWS | IAM roles | Least-privilege per service (see each guide) |
+| Load balancer | ALB + Nginx | TLS termination, /health probe |
+| AWS access | IAM roles | Least-privilege per service (see each guide) |
 
-## Cost & Performance Considerations
+## Cost Notes
 
-- **S3** — ~$0.023/GB/mo; use lifecycle rules to archive/expire old objects.
-- **DynamoDB** — on-demand (`PAY_PER_REQUEST`) avoids idle costs; GSIs double write cost.
-- **SQS** — long polling minimizes API calls; messages ≤ 256 KB.
+- **S3** — ~$0.023/GB/month; use lifecycle rules to archive/expire old objects.
+- **DynamoDB** — on-demand (PAY_PER_REQUEST) avoids idle costs; GSIs double write cost.
+- **SQS** — long polling minimizes API calls; messages <= 256 KB.
 - **SNS** — free per topic (pay per message + per subscriber endpoint).
-- **Secrets Manager** — $0.40/secret/mo + rotation cost; cache reads.
+- **Secrets Manager** — $0.40/secret/month + rotation cost; cache reads.
 - **Lambda** — pay per GB-second; keep functions short and small memory (128–512 MB typical).
 - **CloudWatch** — metrics are cheap; logs/retention and custom metrics are where cost grows.
 
@@ -176,7 +152,7 @@ POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alterna
 | Network | VPC + private subnets; ALB in public; services in private via VPC endpoints |
 | IAM | One role per workload, least-privilege policies (see per-service guides) |
 | Secrets | Secrets Manager with KMS + rotation; no secrets in images/repo |
-| App | JWT auth; superuser gate on `/aws/*`; input validation via Pydantic |
+| App | JWT auth; superuser gate on /aws/*; input validation via Pydantic |
 | Data | S3 SSE + private buckets; DynamoDB encrypted at rest; RDS encryption |
 | Observability | CloudTrail for audit; structured logging with no PII/secrets |
 
@@ -190,6 +166,4 @@ POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alterna
 - [Lambda Guide](lambda-guide.md) — serverless functions
 - [CloudWatch Guide](cloudwatch-guide.md) — metrics, logs, alarms
 
----
-
-[← Back to Docs Index](README.md)
+← Back to [Docs Index](README.md)

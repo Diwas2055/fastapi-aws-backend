@@ -1,19 +1,18 @@
 # Secrets Manager — Secure Secret Storage
 
-## What is Secrets Manager?
+## What It Is
 
-**AWS Secrets Manager** is a managed service for storing, retrieving, and **rotating** secrets — database credentials, API keys, OAuth tokens, connection strings — encrypted at rest with KMS and retrievable via API or IAM role.
+AWS Secrets Manager is a managed service for storing, retrieving, and rotating secrets — database credentials, API keys, OAuth tokens, connection strings. Secrets are encrypted at rest with KMS and retrievable via API or IAM role.
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, Secrets Manager is the **central secrets vault**:
-
-- Store database passwords, Redis credentials, JWT signing keys, and third-party API keys **outside** the codebase and `.env` files
-- Retrieve secrets at runtime via IAM role (ECS task role / EKS IRSA) — **no secrets in the container image or repo**
+In this FastAPI backend, Secrets Manager is the central secrets vault:
+- Store database passwords, Redis credentials, JWT signing keys, and third-party API keys outside the codebase and `.env` files
+- Retrieve secrets at runtime via IAM role (ECS task role / EKS IRSA) — no secrets in the container image or repo
 - Enable automatic rotation so credentials never leak or go stale
 - Audit access through CloudTrail (who read which secret, when)
 
-## How It Works in the App
+## How It Works
 
 ### Architecture
 
@@ -33,9 +32,9 @@ SECRETS_MANAGER_SECRET: Optional[str] = None    # name or ARN of the default sec
 
 | Config | Default | Purpose |
 |--------|---------|---------|
-| `SECRETS_MANAGER_SECRET` | `None` | Default secret name/ARN (services always take an explicit `name`) |
+| `SECRETS_MANAGER_SECRET` | `None` | Default secret name/ARN (services always take an explicit name) |
 
-> Region comes from the shared `AWS_REGION` setting.
+Region comes from the shared `AWS_REGION` setting.
 
 ### Service Class
 
@@ -50,9 +49,9 @@ class SecretsManagerService:
     async def rotate_secret(name) -> bool
 ```
 
-Uses **aioboto3** with `secrets_manager_service = SecretsManagerService()` global instance.
+Uses aioboto3 with `secrets_manager_service = SecretsManagerService()` global instance.
 
-> **Note:** `get_secret()` returns the secret parsed as a Python dict (assumes the secret string is JSON). `create_secret` auto-updates if the secret already exists (`ResourceExistsException` → `update_secret`).
+Note: `get_secret()` returns the secret parsed as a Python dict (assumes the secret string is JSON). `create_secret` auto-updates if the secret already exists (`ResourceExistsException` → `update_secret`).
 
 ## Code Usage Examples
 
@@ -82,7 +81,7 @@ settings.DATABASE_PASSWORD = secret["DB_PASSWORD"]
 settings.JWT_SECRET = secret["JWT_SECRET"]
 ```
 
-> **Tip:** Cache the retrieved secret in memory for the app's lifetime and only re-fetch on rotation events or cache expiry — don't call the API per request.
+Tip: Cache the retrieved secret in memory for the app's lifetime and only re-fetch on rotation events or cache expiry — don't call the API per request.
 
 ### 3. Update / delete
 
@@ -106,7 +105,7 @@ await secrets_manager_service.rotate_secret("fastapi/prod")
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/api/v1/aws/secrets` | Superuser | Create secret (body: `name`, `value` dict, `description`?) |
+| `POST` | `/api/v1/aws/secrets` | Superuser | Create secret (body: `name`, `value` dict, `description?`) |
 | `GET` | `/api/v1/aws/secrets/{name}` | Superuser | Get secret value (returns `{"value": {...}}`) |
 
 ## LocalStack Setup
@@ -145,7 +144,7 @@ aws --endpoint-url=http://localhost:4566 secretsmanager list-secrets --region us
 }
 ```
 
-> **Least privilege:** the app needs `GetSecretValue` + `DescribeSecret` only. Create/update/rotate belong to a deploy-time role or admin, not the runtime role.
+Least privilege: the app needs `GetSecretValue` + `DescribeSecret` only. Create/update/rotate belong to a deploy-time role or admin, not the runtime role.
 
 ## Best Practices
 
@@ -165,9 +164,9 @@ aws --endpoint-url=http://localhost:4566 secretsmanager list-secrets --region us
 | `ResourceNotFoundException` | Secret name/ARN wrong | Verify `SECRETS_MANAGER_SECRET` |
 | `AccessDeniedException` | IAM lacks `GetSecretValue` | Update IAM policy |
 | `InvalidParameterException` | Malformed secret string | Ensure valid JSON |
-| `Secret contains recovery window` | Deleted but in recovery | Wait for recovery to finish |
+| Secret contains recovery window | Deleted but in recovery | Wait for recovery to finish |
 | Decryption failure | KMS key missing/disabled | Check KMS key permissions |
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: Lambda Guide](lambda-guide.md)
+← Back to [Docs Index](README.md) · Next: [Lambda Guide](lambda-guide.md)

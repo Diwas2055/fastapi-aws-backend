@@ -1,33 +1,36 @@
 # AWS Services Documentation
 
-This folder contains detailed guides for every AWS service integrated into the FastAPI backend. Each guide covers the service's purpose, how it fits into the application, configuration, architecture, code usage, API endpoints, security, and best practices.
+Guides for every AWS service used in this project. Each guide explains what the service does, how to set it up, and how the app uses it.
 
-## Guide Index
+## Services
 
-| # | Service | Category | Guide |
-|---|---------|----------|-------|
-| 1 | **S3** | Storage | [S3 - File Storage Guide](s3-guide.md) |
-| 2 | **DynamoDB** | Database | [DynamoDB - NoSQL Guide](dynamodb-guide.md) |
-| 3 | **SQS** | Messaging | [SQS - Message Queue Guide](sqs-guide.md) |
-| 4 | **SNS** | Messaging | [SNS - Notifications Guide](sns-guide.md) |
-| 5 | **Secrets Manager** | Security | [Secrets Manager Guide](secrets-manager-guide.md) |
-| 6 | **Lambda** | Compute | [Lambda - Serverless Guide](lambda-guide.md) |
-| 7 | **CloudWatch** | Monitoring | [CloudWatch Guide](cloudwatch-guide.md) |
-| 8 | **All Services** | Overview | [AWS Architecture Overview](aws-architecture.md) |
+| # | Service | File |
+|---|---------|------|
+| 1 | RDS (PostgreSQL) | [rds-guide.md](rds-guide.md) |
+| 2 | S3 (file storage) | [s3-guide.md](s3-guide.md) |
+| 3 | DynamoDB (NoSQL) | [dynamodb-guide.md](dynamodb-guide.md) |
+| 4 | SQS (message queue) | [sqs-guide.md](sqs-guide.md) |
+| 5 | SNS (notifications) | [sns-guide.md](sns-guide.md) |
+| 6 | Secrets Manager | [secrets-manager-guide.md](secrets-manager-guide.md) |
+| 7 | Lambda (serverless functions) | [lambda-guide.md](lambda-guide.md) |
+| 8 | CloudWatch (logs and metrics) | [cloudwatch-guide.md](cloudwatch-guide.md) |
+| 9 | LocalStack (local AWS) | [localstack-guide.md](localstack-guide.md) |
+| 10 | All services together | [aws-architecture.md](aws-architecture.md) |
 
-## Service Quick Reference
+## Environment Variables by Service
 
-| Service | Service Class | Global Instance | Config Keys |
-|---------|--------------|-----------------|-------------|
-| S3 | `S3Service` | `s3_service` | `S3_BUCKET`, `S3_PRESIGNED_URL_EXPIRY` |
-| DynamoDB | `DynamoDBService` | `dynamodb_service` | `DYNAMODB_TABLE`, `DYNAMODB_ENDPOINT_URL` |
-| SQS | `SQSService` | `sqs_service` | `SQS_QUEUE_URL`, `SQS_VISIBILITY_TIMEOUT` |
-| SNS | `SNSService` | `sns_service` | `SNS_TOPIC_ARN` |
-| Secrets Manager | `SecretsManagerService` | `secrets_manager_service` | `SECRETS_MANAGER_SECRET` |
-| Lambda | `LambdaService` | `lambda_service` | `LAMBDA_FUNCTION_NAME` |
-| CloudWatch | `CloudWatchService` | `cloudwatch_service` | `CLOUDWATCH_LOG_GROUP`, `CLOUDWATCH_LOG_STREAM` |
+| Service | Variables |
+|---------|-----------|
+| RDS | `DATABASE_URL`, `RDS_ENDPOINT`, `RDS_DB_NAME`, `RDS_USERNAME`, `RDS_PASSWORD` |
+| S3 | `S3_BUCKET`, `S3_PRESIGNED_URL_EXPIRY`, `S3_MAX_FILE_SIZE` |
+| DynamoDB | `DYNAMODB_TABLE`, `DYNAMODB_ENDPOINT_URL` |
+| SQS | `SQS_QUEUE_URL`, `SQS_VISIBILITY_TIMEOUT` |
+| SNS | `SNS_TOPIC_ARN` |
+| Secrets Manager | `SECRETS_MANAGER_SECRET` |
+| Lambda | `LAMBDA_FUNCTION_NAME` |
+| CloudWatch | `CLOUDWATCH_LOG_GROUP`, `CLOUDWATCH_LOG_STREAM` |
 
-## Where the Code Lives
+## Where the Service Code Lives
 
 ```
 app/services/aws/
@@ -37,11 +40,13 @@ app/services/aws/
 ├── sns_service.py           # SNSService - pub/sub notifications
 ├── secrets_service.py       # SecretsManagerService - secure secrets
 ├── lambda_service.py        # LambdaService - serverless invocation
-├── cloudwatch_service.py    # CloudWatchService - metrics & logs
+├── cloudwatch_service.py    # CloudWatchService - metrics and logs
 └── __init__.py              # Global service instances
 ```
 
-## API Endpoints (all under `/api/v1/aws`, superuser only)
+## API Endpoints
+
+All under `/api/v1/aws`. Require superuser JWT.
 
 | Service | Endpoints |
 |---------|-----------|
@@ -53,9 +58,9 @@ app/services/aws/
 | Lambda | `POST /lambda/invoke` |
 | CloudWatch | `POST /cloudwatch/metric`, `POST /cloudwatch/log`, `GET /cloudwatch/logs` |
 
-## Development with LocalStack
+## Running Locally with LocalStack
 
-All services can run against **LocalStack** locally (no AWS account needed):
+All services work against LocalStack locally (no AWS account needed):
 
 ```bash
 docker-compose up -d localstack
@@ -65,13 +70,11 @@ make aws-list-resources     # Lists all created resources
 
 Set `AWS_ENDPOINT_URL=http://localhost:4566` in `.env` to point the app at LocalStack.
 
-## Production Notes
+## Production Tips
 
-- **IAM**: Create scoped IAM roles with least-privilege policies per service (see each guide's IAM section).
-- **Secrets**: Never store credentials in code or `.env` — use Secrets Manager (rotated) or IAM roles (ECS/EKS).
-- **Networking**: Services communicate over VPC endpoints for private, secure traffic.
-- **Costs**: S3/DynamoDB on-demand, CloudWatch metrics at 1-minute granularity, etc.
+- Use IAM roles instead of hardcoded credentials when running on AWS (ECS/EKS)
+- Store secrets in Secrets Manager, not in `.env` files
+- Use VPC endpoints so traffic stays inside AWS network
+- Turn on backups and monitoring for production databases
 
----
-
-→ Continue to [AWS Architecture Overview](aws-architecture.md) for how everything connects, or open an individual guide.
+→ Start with [aws-architecture.md](aws-architecture.md) for how everything connects, or open an individual service guide.

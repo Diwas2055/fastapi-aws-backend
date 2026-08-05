@@ -7,7 +7,7 @@ Handles environment variables, settings, and application configuration.
 import secrets
 from functools import lru_cache
 
-from pydantic import Field, PostgresDsn, RedisDsn
+from pydantic import Field, PostgresDsn, RedisDsn, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -44,6 +44,32 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
     DATABASE_POOL_TIMEOUT: int = 30
+
+    # AWS RDS
+    RDS_INSTANCE_IDENTIFIER: str | None = None
+    RDS_ENDPOINT: str | None = None
+    RDS_PORT: int = 5432
+    RDS_DB_NAME: str | None = None
+    RDS_USERNAME: str | None = None
+    RDS_PASSWORD: str | None = None
+    RDS_POOL_SIZE: int = 10
+    RDS_MAX_OVERFLOW: int = 20
+    RDS_POOL_TIMEOUT: int = 30
+    RDS_POOL_RECYCLE: int = 1800
+    RDS_POOL_PRE_PING: bool = True
+
+    @model_validator(mode="after")
+    def _build_database_url_from_rds(self) -> "Settings":
+        if self.RDS_ENDPOINT and self.RDS_DB_NAME and self.RDS_USERNAME and self.RDS_PASSWORD:
+            self.DATABASE_URL = PostgresDsn(
+                f"postgresql+asyncpg://{self.RDS_USERNAME}:{self.RDS_PASSWORD}"
+                f"@{self.RDS_ENDPOINT}:{self.RDS_PORT}/{self.RDS_DB_NAME}"
+            )
+        return self
+
+    @property
+    def is_rds(self) -> bool:
+        return bool(self.RDS_ENDPOINT and self.RDS_DB_NAME and self.RDS_USERNAME and self.RDS_PASSWORD)
 
     # Redis
     REDIS_URL: RedisDsn = Field(default="redis://localhost:6379/0")

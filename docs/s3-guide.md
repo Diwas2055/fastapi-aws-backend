@@ -1,19 +1,18 @@
 # S3 — File Storage with Presigned URLs
 
-## What is S3?
+## What It Is
 
-**Amazon Simple Storage Service (S3)** is AWS's object storage service. It stores any amount of data (files, images, videos, backups, static assets) as *objects* inside *buckets* with 11 nines of durability (99.999999999%).
+Amazon Simple Storage Service (S3) is AWS's object storage service. It stores any amount of data (files, images, videos, backups, static assets) as objects inside buckets. It is designed for 99.999999999% durability (11 nines).
 
-## Why We Use It Here
+## Why We Use It
 
-In this FastAPI backend, S3 is the **primary file storage layer**:
-
+In this FastAPI backend, S3 is the primary file storage layer:
 - Upload and store user files (images, documents, uploads) referenced by Items
-- Generate **presigned URLs** so browsers/clients upload/download directly to S3 **without exposing AWS credentials**
+- Generate presigned URLs so browsers/clients upload/download directly to S3 without exposing AWS credentials
 - Store static assets with metadata (uploader, content-type, timestamps)
 - Enable direct-to-S3 uploads that bypass the application server entirely (scales, cheap)
 
-## How It Works in the App
+## How It Works
 
 ### Architecture
 
@@ -61,7 +60,7 @@ class S3Service:
     def generate_unique_key(filename, prefix="") -> str
 ```
 
-Uses **aioboto3** (async AWS SDK) with `s3_service = S3Service()` as the global instance.
+Uses aioboto3 (async AWS SDK) with `s3_service = S3Service()` as the global instance.
 
 ## Code Usage Examples
 
@@ -162,7 +161,7 @@ aws --endpoint-url=http://localhost:4566 s3 cp s3://fastapi-uploads/test.txt -
 
 1. **Never use long-term keys in the app** — use IAM roles (ECS task roles, EKS IRSA).
 2. **Presigned URLs** — short expiry (1 hour), scoped to one object and one action.
-3. **Private buckets by default** — never set `public-read`; use presigned URLs for access.
+3. **Private buckets by default** — never set public-read; use presigned URLs for access.
 4. **Validate uploads** — check content-type and size (`S3_MAX_FILE_SIZE`) before upload.
 5. **Bucket versioning** — enable for rollback of accidental overwrites/deletes.
 6. **Server-side encryption** — enable SSE-S3 or SSE-KMS on the bucket.
@@ -181,4 +180,4 @@ aws --endpoint-url=http://localhost:4566 s3 cp s3://fastapi-uploads/test.txt -
 
 ---
 
-[← Back to Docs Index](README.md) · [Next: DynamoDB Guide](dynamodb-guide.md)
+← Back to [Docs Index](README.md) · Next: [DynamoDB Guide](dynamodb-guide.md)

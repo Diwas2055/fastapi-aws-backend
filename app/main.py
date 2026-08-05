@@ -10,7 +10,8 @@ from fastapi.responses import JSONResponse
 from app.api import auth, aws, health, items, users
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
-from app.db.session import close_db, init_db
+from app.db.session import close_db, engine, init_db
+from app.services import setup_opentelemetry, shutdown_opentelemetry
 
 # Configure logging
 configure_logging()
@@ -29,15 +30,14 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
 
-    # Initialize AWS services (create buckets, tables, etc.)
-    if settings.ENVIRONMENT != "production":
-        # In development, create necessary AWS resources
-        pass
+    # Initialize SigNoz observability
+    setup_opentelemetry(app=app, engine=engine)
 
     yield
 
     # Shutdown
     logger.info("Shutting down application")
+    shutdown_opentelemetry()
     await close_db()
     logger.info("Database connections closed")
 

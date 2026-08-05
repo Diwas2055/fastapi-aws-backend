@@ -19,10 +19,14 @@ How the AWS services in this project fit together, shared infrastructure, and th
                                     │   │  ┌───────┐  ┌──────┐  ┌───────┐  │     │
                                     │   │  │  SNS  │  │Secrets│  │Lambda │  │     │
                                     │   │  └───────┘  └──────┘  └───────┘  │     │
-                                    │   │  ┌────────────────────────────┐  │     │
-                                    │   │  │        CloudWatch          │  │     │
-                                    │   │  └────────────────────────────┘  │     │
-                                    │   └──────────────────────────────────┘     │
+                                     │   │  ┌────────────────────────────┐  │     │
+                                     │   │  │        CloudWatch          │  │     │
+                                     │   │  └────────────────────────────┘  │     │
+                                     │   │  ┌────────────────────────────┐  │     │
+                                     │   │  │          SigNoz            │  │     │
+                                     │   │  │   (Traces, Metrics, Logs)  │  │     │
+                                     │   │  └────────────────────────────┘  │     │
+                                     │   └──────────────────────────────────┘     │
                                     │                                            │
                                     │   ┌──────────┐  ┌───────┐  ┌───────────┐   │
                                     │   │PostgreSQL│  │ Redis │  │  Celery   │   │
@@ -38,7 +42,7 @@ How the AWS services in this project fit together, shared infrastructure, and th
 3. **Data** — PostgreSQL (RDS, relational), DynamoDB (NoSQL/hot data), S3 (objects/files), Redis (cache/queues).
 4. **Async** — Celery workers + SQS queue + SNS fan-out + Lambda reactions.
 5. **Security** — Secrets Manager (vault), IAM roles (AWS access), JWT (app access).
-6. **Observability** — CloudWatch (metrics, logs, alarms), structured logging.
+6. **Observability** — CloudWatch (AWS metrics, logs, alarms), SigNoz (OpenTelemetry traces, metrics, logs, APM).
 
 ## Shared AWS Client Setup
 
@@ -103,12 +107,18 @@ Container start ──▶ IAM role → SecretsManager.get_secret("fastapi/prod")
         └── DB password, JWT secret, API keys loaded into settings (cached)
 ```
 
-### Flow 4 — Observability (CloudWatch)
+### Flow 4 — Observability (CloudWatch + SigNoz)
 
 ```
 Every request ──▶ structured JSON log ──▶ CloudWatch Logs
-                      └── custom metrics (RequestCount, ErrorCount, latency) ──▶ Metrics + Alarms ──▶ SNS
+                       └── OpenTelemetry traces/metrics/logs ──▶ SigNoz
+                             └── Service Map, distributed tracing, exception tracking
 ```
+
+CloudWatch handles AWS-native metrics and alarms. SigNoz handles application-level observability with OpenTelemetry:
+- Traces show request paths across FastAPI, database, Redis, Celery, and AWS services
+- Metrics include RED (Rate, Errors, Duration) for every endpoint
+- Logs are correlated with traces via trace IDs
 
 ### Flow 5 — Flexible hot data (DynamoDB)
 
@@ -131,7 +141,7 @@ POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alterna
 | Notifications | SNS | fastapi-notifications topic |
 | Secrets | Secrets Manager | fastapi/prod, rotation via Lambda |
 | Serverless | Lambda | thumbnail/reactor/export functions |
-| Monitoring | CloudWatch | Logs, metrics, alarms → SNS |
+| Monitoring | CloudWatch + SigNoz | CloudWatch for AWS metrics; SigNoz for traces, metrics, logs, APM |
 | Load balancer | ALB + Nginx | TLS termination, /health probe |
 | AWS access | IAM roles | Least-privilege per service (see each guide) |
 
@@ -165,5 +175,6 @@ POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alterna
 - [Secrets Manager Guide](secrets-manager-guide.md) — secure vault
 - [Lambda Guide](lambda-guide.md) — serverless functions
 - [CloudWatch Guide](cloudwatch-guide.md) — metrics, logs, alarms
+- [SigNoz Guide](signoz-guide.md) — OpenTelemetry observability with traces, metrics, logs, APM
 
 ← Back to [Docs Index](README.md)

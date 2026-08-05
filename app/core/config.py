@@ -129,6 +129,15 @@ class Settings(BaseSettings):
     ENABLE_METRICS: bool = True
     METRICS_PORT: int = 9090
 
+    # SigNoz / OpenTelemetry
+    SIGNOZ_ENABLED: bool = True
+    SIGNOZ_OTLP_ENDPOINT: str = "http://localhost:4318"
+    SIGNOZ_SERVICE_NAME: str = "fastapi-aws-backend"
+    SIGNOZ_SERVICE_VERSION: str = "1.0.0"
+    SIGNOZ_DEPLOYMENT_ENVIRONMENT: str = "development"
+    SIGNOZ_TRACING_SAMPLE_RATE: float = 1.0
+    SIGNOZ_UI_URL: str = "http://localhost:3301"
+
     # Optional email settings
     SMTP_HOST: str | None = None
     SMTP_PORT: int = 587

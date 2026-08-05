@@ -165,10 +165,27 @@ services:
       - app-network
     restart: unless-stopped
 
+  # SigNoz - Observability Platform
+  signoz:
+    image: signoz/signoz:latest
+    container_name: fastapi-signoz
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "3301:3301"   # SigNoz UI
+    environment:
+      - DOCKER_MONITORING_ENABLED=false
+    volumes:
+      - signoz_data:/var/lib/signoz
+    networks:
+      - app-network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   localstack_data:
+  signoz_data:
 
 networks:
   app-network:

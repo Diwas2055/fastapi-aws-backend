@@ -37,6 +37,7 @@ Detailed guides for every AWS service integration live in [`docs/`](docs/):
 | [Secrets Manager Guide](docs/secrets-manager-guide.md) | Secure secret storage |
 | [Lambda Guide](docs/lambda-guide.md) | Serverless function invocation |
 | [CloudWatch Guide](docs/cloudwatch-guide.md) | Monitoring and logging |
+| [SigNoz Guide](docs/signoz-guide.md) | OpenTelemetry observability with traces, metrics, and logs |
 | [CI/CD Guide](docs/cicd-guide.md) | GitHub Actions workflow and pipeline concepts |
 
 Each guide covers configuration, code usage, API endpoints, LocalStack setup, IAM policies, best practices, and common errors.
@@ -155,7 +156,9 @@ aws-fastapi-backend/
 │   ├── sns-guide.md
 │   ├── secrets-manager-guide.md
 │   ├── lambda-guide.md
-│   └── cloudwatch-guide.md
+│   ├── cloudwatch-guide.md
+│   ├── signoz-guide.md
+│   └── cicd-guide.md
 ├── migrations/           # Alembic migrations
 ├── scripts/              # Database init scripts & utilities
 ├── infrastructure/       # Infrastructure configs

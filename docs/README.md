@@ -15,8 +15,9 @@ Guides for every AWS service used in this project. Each guide explains what the 
 | 7 | Lambda (serverless functions) | [lambda-guide.md](lambda-guide.md) |
 | 8 | CloudWatch (logs and metrics) | [cloudwatch-guide.md](cloudwatch-guide.md) |
 | 9 | LocalStack (local AWS) | [localstack-guide.md](localstack-guide.md) |
-| 10 | CI/CD Pipeline | [cicd-guide.md](cicd-guide.md) |
-| 11 | All services together | [aws-architecture.md](aws-architecture.md) |
+| 10 | SigNoz (observability) | [signoz-guide.md](signoz-guide.md) |
+| 11 | CI/CD Pipeline | [cicd-guide.md](cicd-guide.md) |
+| 12 | All services together | [aws-architecture.md](aws-architecture.md) |
 
 ## Environment Variables by Service
 

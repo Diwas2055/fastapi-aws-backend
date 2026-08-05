@@ -526,6 +526,8 @@ make docs         # Show documentation URLs
 
 ## LocalStack Development
 
+LocalStack requires an auth token. Get one free at https://app.localstack.cloud/account/auth-tokens and set `LOCALSTACK_AUTH_TOKEN` in `.env`.
+
 LocalStack provides a local AWS cloud stack for development/testing:
 
 ```bash

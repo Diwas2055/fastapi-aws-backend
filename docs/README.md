@@ -64,6 +64,8 @@ All under `/api/v1/aws`. Require superuser JWT.
 
 ## Running Locally with LocalStack
 
+LocalStack requires an auth token. Get one free at https://app.localstack.cloud/account/auth-tokens and set `LOCALSTACK_AUTH_TOKEN` in `.env`.
+
 All services work against LocalStack locally (no AWS account needed):
 
 ```bash

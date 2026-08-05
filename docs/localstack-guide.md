@@ -24,6 +24,17 @@ Real AWS uses URLs like `https://s3.amazonaws.com`. LocalStack uses `http://loca
 
 ## Setup
 
+### Prerequisite: LocalStack Auth Token
+
+LocalStack requires an auth token. Get one free at https://app.localstack.cloud/account/auth-tokens
+
+```bash
+# .env
+LOCALSTACK_AUTH_TOKEN=your-token-here
+```
+
+Without this token, LocalStack will fail to start.
+
 ### Start LocalStack
 
 ```bash
@@ -31,6 +42,16 @@ docker-compose up -d localstack
 ```
 
 This starts the `localstack` service defined in `docker-compose.yml`.
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `LOCALSTACK_AUTH_TOKEN` | Yes | - | Auth token from app.localstack.cloud |
+| `LOCALSTACK_DOCKER_NAME` | No | `localstack-main` | Container name |
+| `LOCALSTACK_VOLUME_DIR` | No | `./volume` | Local directory for LocalStack data |
+| `DEBUG` | No | `0` | Debug mode (0 or 1) |
+| `PERSISTENCE` | No | `0` | Persist data between restarts (0 or 1) |
 
 ### Check It's Running
 

@@ -59,6 +59,13 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS}
       - LOG_LEVEL=INFO
       - LOG_FORMAT=json
+      - SIGNOZ_ENABLED=true
+      - SIGNOZ_OTLP_ENDPOINT=http://signoz:4318
+      - SIGNOZ_SERVICE_NAME=fastapi-aws-backend
+      - SIGNOZ_SERVICE_VERSION=${APP_VERSION:-1.0.0}
+      - SIGNOZ_DEPLOYMENT_ENVIRONMENT=production
+      - SIGNOZ_TRACING_SAMPLE_RATE=0.1
+      - SIGNOZ_UI_URL=http://signoz:3301
     deploy:
       replicas: 3
       resources:
@@ -107,6 +114,13 @@ services:
       - AWS_REGION=${AWS_REGION}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - SIGNOZ_ENABLED=true
+      - SIGNOZ_OTLP_ENDPOINT=http://signoz:4318
+      - SIGNOZ_SERVICE_NAME=fastapi-aws-backend-worker
+      - SIGNOZ_SERVICE_VERSION=${APP_VERSION:-1.0.0}
+      - SIGNOZ_DEPLOYMENT_ENVIRONMENT=production
+      - SIGNOZ_TRACING_SAMPLE_RATE=0.1
+      - SIGNOZ_UI_URL=http://signoz:3301
     deploy:
       replicas: 2
       resources:
@@ -128,6 +142,13 @@ services:
       - ENVIRONMENT=production
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - SIGNOZ_ENABLED=true
+      - SIGNOZ_OTLP_ENDPOINT=http://signoz:4318
+      - SIGNOZ_SERVICE_NAME=fastapi-aws-backend-beat
+      - SIGNOZ_SERVICE_VERSION=${APP_VERSION:-1.0.0}
+      - SIGNOZ_DEPLOYMENT_ENVIRONMENT=production
+      - SIGNOZ_TRACING_SAMPLE_RATE=0.1
+      - SIGNOZ_UI_URL=http://signoz:3301
     deploy:
       replicas: 1
       resources:

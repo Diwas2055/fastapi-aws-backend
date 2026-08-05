@@ -30,7 +30,7 @@ Detailed guides for every AWS service integration live in [`docs/`](docs/):
 | Guide | Description |
 |-------|-------------|
 | [AWS Architecture Overview](docs/aws-architecture.md) | How all AWS services fit together, event flows, deployment map |
-| [S3 Guide](docs/s3-guide.md) | File storage with presigned URLs |
+| [S3 Guide](docs/s3-guide.md) | File storage with presigned URLs and multipart upload for 100GB+ files |
 | [DynamoDB Guide](docs/dynamodb-guide.md) | NoSQL database with GSI support |
 | [SQS Guide](docs/sqs-guide.md) | Message queuing for async processing |
 | [SNS Guide](docs/sns-guide.md) | Pub/Sub notifications |
@@ -41,6 +41,7 @@ Detailed guides for every AWS service integration live in [`docs/`](docs/):
 | [Terraform Guide](docs/terraform-guide.md) | Infrastructure as code with Terraform |
 | [Serverless Guide](docs/serverless-guide.md) | Lambda + API Gateway with Serverless Framework |
 | [CI/CD Guide](docs/cicd-guide.md) | GitHub Actions workflow and pipeline concepts |
+| [AWS Troubleshooting Guide](docs/aws-troubleshooting.md) | Enterprise AWS service issues and solutions |
 
 Each guide covers configuration, code usage, API endpoints, LocalStack setup, IAM policies, best practices, and common errors.
 
@@ -260,6 +261,29 @@ await s3_service.upload_file(file_obj, key, "application/pdf")
 
 # Generate download URL
 download_url = await s3_service.generate_presigned_download_url(key)
+
+# Multipart upload for large files (>100MB)
+init = await s3_service.initiate_multipart_upload(
+    key="uploads/large-video.mp4",
+    content_type="video/mp4",
+)
+upload_id = init["upload_id"]
+
+# Get presigned URLs for each part (client-side)
+for part_number in range(1, total_parts + 1):
+    part_url = await s3_service.generate_presigned_upload_part_url(
+        key=init["key"],
+        upload_id=upload_id,
+        part_number=part_number,
+    )
+    # Client uploads part directly to S3, captures ETag
+
+# Complete upload
+await s3_service.complete_multipart_upload(
+    key=init["key"],
+    upload_id=upload_id,
+    parts=[{"PartNumber": 1, "ETag": "abc"}, ...],
+)
 ```
 
 ### DynamoDB - NoSQL
@@ -724,8 +748,26 @@ jobs:
 - **Health Checks**: `/health`, `/ready`, `/live`
 - **Metrics**: Custom CloudWatch metrics via `/api/v1/aws/cloudwatch/metric`
 - **Logging**: Structured JSON logs sent to CloudWatch
-- **Tracing**: Add OpenTelemetry for distributed tracing
+- **Tracing & APM**: **SigNoz** with OpenTelemetry for distributed tracing, metrics, and logs
 - **Alerting**: CloudWatch alarms for error rates, latency, etc.
+
+### SigNoz
+
+[SigNoz](docs/signoz-guide.md) is the primary observability platform. It collects traces, metrics, and logs via OpenTelemetry and stores them in ClickHouse.
+
+**Local development**:
+```bash
+docker-compose up -d signoz
+# UI: http://localhost:3301
+# OTLP HTTP: http://localhost:4318
+```
+
+**Production**:
+- Deployed via `docker-compose.prod.yml` or Terraform `signoz` module
+- Set `SIGNOZ_ENABLED=true` and configure `SIGNOZ_OTLP_ENDPOINT`
+- Sample rate: `0.1` in production to reduce storage/cost
+
+See [SigNoz Guide](docs/signoz-guide.md) for setup, configuration, and troubleshooting.
 
 ## Environment Variables Reference
 

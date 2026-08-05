@@ -77,9 +77,6 @@ logs/
 # Kubernetes
 .kube/
 
-# CI/CD
-.github/workflows/*.yml
-
 # OS
 Thumbs.db
 ehthumbs.db

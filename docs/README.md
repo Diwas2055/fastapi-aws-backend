@@ -15,7 +15,8 @@ Guides for every AWS service used in this project. Each guide explains what the 
 | 7 | Lambda (serverless functions) | [lambda-guide.md](lambda-guide.md) |
 | 8 | CloudWatch (logs and metrics) | [cloudwatch-guide.md](cloudwatch-guide.md) |
 | 9 | LocalStack (local AWS) | [localstack-guide.md](localstack-guide.md) |
-| 10 | All services together | [aws-architecture.md](aws-architecture.md) |
+| 10 | CI/CD Pipeline | [cicd-guide.md](cicd-guide.md) |
+| 11 | All services together | [aws-architecture.md](aws-architecture.md) |
 
 ## Environment Variables by Service
 
@@ -69,6 +70,36 @@ make aws-list-resources     # Lists all created resources
 ```
 
 Set `AWS_ENDPOINT_URL=http://localhost:4566` in `.env` to point the app at LocalStack.
+
+## CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and deployment. The pipeline runs automatically on every push and pull request.
+
+**Workflow file**: [.github/workflows/ci-cd.yml](../.github/workflows/ci-cd.yml)
+**Full guide**: [cicd-guide.md](cicd-guide.md)
+
+### Pipeline Jobs
+
+| Job | When It Runs | What It Does |
+|-----|--------------|--------------|
+| `lint` | Every push/PR | Runs ruff to check code style |
+| `type-check` | Every push/PR | Runs mypy to check type hints |
+| `test` | Every push/PR | Runs pytest with PostgreSQL and Redis |
+| `security-scan` | Every push/PR | Checks for vulnerable dependencies |
+| `docker-build` | Every push/PR | Builds Docker image to verify it works |
+| `deploy` | Only on main branch | Pushes image to registry and deploys |
+| `notify-on-failure` | If any job fails | Sends notification of failure |
+
+### Required Secrets
+
+Set these in GitHub repository settings under **Secrets and variables > Actions**:
+
+- `DOCKER_REGISTRY` - Docker registry URL
+- `DOCKER_USERNAME` - Registry username
+- `DOCKER_PASSWORD` - Registry password
+- `SSH_PRIVATE_KEY` - SSH key for deployment server
+- `SSH_HOST` - Production server hostname/IP
+- `SSH_USER` - SSH username
 
 ## Production Tips
 

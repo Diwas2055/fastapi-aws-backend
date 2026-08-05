@@ -37,6 +37,7 @@ Detailed guides for every AWS service integration live in [`docs/`](docs/):
 | [Secrets Manager Guide](docs/secrets-manager-guide.md) | Secure secret storage |
 | [Lambda Guide](docs/lambda-guide.md) | Serverless function invocation |
 | [CloudWatch Guide](docs/cloudwatch-guide.md) | Monitoring and logging |
+| [CI/CD Guide](docs/cicd-guide.md) | GitHub Actions workflow and pipeline concepts |
 
 Each guide covers configuration, code usage, API endpoints, LocalStack setup, IAM policies, best practices, and common errors.
 
@@ -489,6 +490,14 @@ Hooks included:
 - **Bandit** - Security linting
 - **detect-secrets** - Secret detection
 - **Standard hooks** - YAML/JSON/TOML validation, merge conflicts, large files
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration and deployment. The pipeline runs tests, linting, and Docker builds on every push.
+
+| Guide | Description |
+|-------|-------------|
+| [CI/CD Guide](docs/cicd-guide.md) | GitHub Actions workflow setup and concepts |
 
 ## Useful Scripts
 

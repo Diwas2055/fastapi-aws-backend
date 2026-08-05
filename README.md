@@ -38,6 +38,8 @@ Detailed guides for every AWS service integration live in [`docs/`](docs/):
 | [Lambda Guide](docs/lambda-guide.md) | Serverless function invocation |
 | [CloudWatch Guide](docs/cloudwatch-guide.md) | Monitoring and logging |
 | [SigNoz Guide](docs/signoz-guide.md) | OpenTelemetry observability with traces, metrics, and logs |
+| [Terraform Guide](docs/terraform-guide.md) | Infrastructure as code with Terraform |
+| [Serverless Guide](docs/serverless-guide.md) | Lambda + API Gateway with Serverless Framework |
 | [CI/CD Guide](docs/cicd-guide.md) | GitHub Actions workflow and pipeline concepts |
 
 Each guide covers configuration, code usage, API endpoints, LocalStack setup, IAM policies, best practices, and common errors.
@@ -158,12 +160,16 @@ aws-fastapi-backend/
 │   ├── lambda-guide.md
 │   ├── cloudwatch-guide.md
 │   ├── signoz-guide.md
+│   ├── terraform-guide.md
+│   ├── serverless-guide.md
 │   └── cicd-guide.md
 ├── migrations/           # Alembic migrations
 ├── scripts/              # Database init scripts & utilities
 ├── infrastructure/       # Infrastructure configs
 │   ├── nginx/            # Nginx configuration
-│   └── ssl/              # SSL certificates
+│   ├── ssl/              # SSL certificates
+│   ├── terraform/        # Terraform IaC modules
+│   └── serverless/       # Serverless Framework config
 ├── tests/                # Test suite
 ├── Dockerfile            # Multi-stage Docker build
 ├── docker-compose.yml    # Service orchestration (dev)
@@ -348,6 +354,88 @@ await cloudwatch_service.put_log_event(
     level="INFO"
 )
 ```
+
+## Infrastructure as Code (Terraform)
+
+All AWS infrastructure is defined in `infrastructure/terraform/` using Terraform.
+
+### Setup
+
+```bash
+cd infrastructure/terraform
+
+# Copy example variables
+cp terraform.tfvars.example terraform.tfvars
+
+# Edit with your values
+# Set db_password, container_image, etc.
+
+# Initialize
+terraform init
+
+# Preview changes
+terraform plan
+
+# Apply
+terraform apply
+```
+
+### Modules
+
+| Module | Resources |
+|--------|-----------|
+| `vpc` | VPC, public/private/data subnets, IGW, NAT GW, security groups |
+| `rds` | PostgreSQL RDS with encryption, backups, monitoring |
+| `redis` | ElastiCache Redis with encryption and auth |
+| `s3` | S3 bucket with versioning, encryption, lifecycle |
+| `dynamodb` | DynamoDB table with GSI, streams, point-in-time recovery |
+| `sqs` | SQS queue with DLQ and long polling |
+| `sns` | SNS topic with SQS subscription |
+| `iam` | ECS and Lambda execution roles with least-privilege policies |
+| `lambda` | Lambda function with API Gateway |
+| `ecs` | Fargate cluster, task definition, service, auto scaling |
+| `alb` | Application Load Balancer with HTTP/HTTPS listeners |
+| `cloudwatch` | Log groups, metrics, alarms |
+| `signoz` | SigNoz observability instance (optional) |
+
+### Key Outputs
+
+After `terraform apply`, use outputs to configure your FastAPI app:
+
+```bash
+terraform output rds_endpoint
+terraform output redis_endpoint
+terraform output s3_bucket_name
+terraform output sqs_queue_url
+terraform output sns_topic_arn
+```
+
+## Serverless Functions
+
+Deploy Lambda functions independently using the Serverless Framework.
+
+```bash
+cd infrastructure/serverless
+
+npm install
+
+# Deploy
+serverless deploy
+
+# Local development
+serverless offline
+```
+
+### Functions
+
+| Function | Trigger | Description |
+|----------|---------|-------------|
+| `health` | HTTP GET `/health` | Health check |
+| `webhook` | HTTP POST `/webhook` | External webhook receiver |
+| `s3Processor` | S3 ObjectCreated | Process S3 uploads |
+| `sqsProcessor` | SQS message | Process queue messages |
+| `snsProcessor` | SNS notification | Handle notifications |
+| `scheduledCleanup` | Daily cron | Cleanup old S3 objects |
 
 ## Database Migrations
 

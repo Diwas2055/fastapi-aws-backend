@@ -1,0 +1,124 @@
+service: fastapi-aws-backend-serverless
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 128
+  timeout: 30
+  versionFunctions: true
+  tracing:
+    lambda: true
+    apiGateway: true
+
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: true
+    NODE_ENV: ${self:provider.stage}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:ListBucket
+          Resource:
+            - arn:aws:s3:::*
+            - arn:aws:s3:::/*
+
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:*
+            - arn:aws:dynamodb:*/*
+
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+          Resource: arn:aws:sqs:*
+
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource: arn:aws:sns:*
+
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: arn:aws:logs:*
+
+package:
+  individually: true
+  excludeDevDependencies: false
+
+functions:
+  # API Gateway endpoints
+  health:
+    handler: handler.health
+    events:
+      - httpApi:
+          path: /health
+          method: get
+
+  # Process incoming webhooks
+  webhook:
+    handler: handler.webhook
+    events:
+      - httpApi:
+          path: /webhook
+          method: post
+
+  # Process S3 events
+  s3Processor:
+    handler: handler.processS3Event
+    events:
+      - s3:
+          bucket: ${self:custom.s3Bucket}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: uploads/
+            - suffix: .jpg
+
+  # Process SQS messages
+  sqsProcessor:
+    handler: handler.processSQSMessage
+    events:
+      - sqs:
+          arn: arn:aws:sqs:${self:provider.region}:*:*
+          batchSize: 10
+
+  # Process SNS notifications
+  snsProcessor:
+    handler: handler.processSNSMessage
+    events:
+      - sns:
+          arn: arn:aws:sns:${self:provider.region}:*
+          topicName: ${self:custom.snsTopic}
+
+  # Scheduled job
+  scheduledCleanup:
+    handler: handler.scheduledCleanup
+    events:
+      - schedule:
+          rate: rate(1 day)
+          enabled: false
+
+custom:
+  s3Bucket: ${self:service}-${self:provider.stage}-uploads
+  snsTopic: ${self:service}-${self:provider.stage}-notifications
+
+plugins:
+  - serverless-offline

@@ -1,0 +1,39 @@
+# AWS Configuration
+aws_region = "us-east-1"
+project_name = "fastapi-aws-backend"
+environment = "dev"
+
+# VPC
+vpc_cidr = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+# Container
+container_image = "fastapi-aws-backend:latest"
+container_port = 8000
+
+# Domain (optional)
+domain_name = ""
+certificate_arn = ""
+
+# Database
+db_instance_class = "db.t3.micro"
+db_allocated_storage = 20
+db_max_allocated_storage = 100
+db_name = "fastapi_app"
+db_username = "postgres"
+db_password = "CHANGE_ME_USE_SECURE_PASSWORD"
+
+# Redis
+redis_node_type = "cache.t3.micro"
+redis_num_cache_nodes = 1
+
+# Lambda
+lambda_runtime = "python3.12"
+lambda_memory_size = 128
+lambda_timeout = 30
+
+# Logging
+log_retention_in_days = 30
+
+# SigNoz
+enable_signoz = true

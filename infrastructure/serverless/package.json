@@ -1,0 +1,22 @@
+{
+  "name": "fastapi-aws-backend-serverless",
+  "version": "1.0.0",
+  "description": "Serverless functions for FastAPI AWS Backend",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1500.0",
+    "@aws-sdk/client-s3": "^3.450.0",
+    "@aws-sdk/client-dynamodb": "^3.450.0",
+    "@aws-sdk/client-sqs": "^3.450.0",
+    "@aws-sdk/client-sns": "^3.450.0",
+    "@aws-sdk/client-lambda": "^3.450.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-offline": "^12.0.0",
+    "serverless-plugin-typescript": "^2.1.5"
+  }
+}

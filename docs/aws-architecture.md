@@ -146,22 +146,57 @@ GET  /aws/dynamodb/items/{pk}/{sk} ──▶ get_item
 POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alternative access)
 ```
 
+## Infrastructure Provisioning
+
+All AWS infrastructure is provisioned using **Terraform** (infrastructure as code).
+
+```
+infrastructure/terraform/
+├── main.tf               # Main resource definitions
+├── variables.tf          # Input variables
+├── outputs.tf            # Output values
+└── modules/              # Reusable modules
+    ├── vpc/              # VPC, subnets, security groups
+    ├── rds/              # PostgreSQL RDS
+    ├── redis/            # ElastiCache Redis
+    ├── s3/               # S3 bucket
+    ├── dynamodb/         # DynamoDB table
+    ├── sqs/              # SQS queue with DLQ
+    ├── sns/              # SNS topic
+    ├── iam/              # IAM roles and policies
+    ├── lambda/           # Lambda function + API Gateway
+    ├── ecs/              # ECS cluster, task, service
+    ├── alb/              # Application Load Balancer
+    ├── cloudwatch/       # Logs, metrics, alarms
+    └── signoz/           # SigNoz observability
+```
+
+**Deploy:**
+```bash
+cd infrastructure/terraform
+terraform init
+terraform plan
+terraform apply
+```
+
+State is stored in S3 (`fastapi-terraform-state`) with DynamoDB locking (`fastapi-terraform-locks`).
+
 ## Production Components
 
-| Component | AWS Service | Notes |
-|-----------|-------------|-------|
-| FastAPI app | ECS on Fargate (or EKS) | Multi-stage Docker build, health checks |
-| PostgreSQL | RDS | Managed, Multi-AZ, encrypted |
-| Redis | ElastiCache | Celery broker + result backend |
-| Object storage | S3 | fastapi-uploads bucket |
-| NoSQL | DynamoDB | fastapi-items table + GSI1 |
-| Queues | SQS | fastapi-queue, DLQ configured |
-| Notifications | SNS | fastapi-notifications topic |
-| Secrets | Secrets Manager | fastapi/prod, rotation via Lambda |
-| Serverless | Lambda | thumbnail/reactor/export functions |
-| Monitoring | CloudWatch + SigNoz | CloudWatch for AWS metrics; SigNoz for traces, metrics, logs, APM |
-| Load balancer | ALB + Nginx | TLS termination, /health probe |
-| AWS access | IAM roles | Least-privilege per service (see each guide) |
+| Component | AWS Service | Provisioning |
+|-----------|-------------|--------------|
+| FastAPI app | ECS on Fargate | Terraform (`modules/ecs`) |
+| PostgreSQL | RDS | Terraform (`modules/rds`) |
+| Redis | ElastiCache | Terraform (`modules/redis`) |
+| Object storage | S3 | Terraform (`modules/s3`) |
+| NoSQL | DynamoDB | Terraform (`modules/dynamodb`) |
+| Queues | SQS | Terraform (`modules/sqs`) |
+| Notifications | SNS | Terraform (`modules/sns`) |
+| Secrets | Secrets Manager | Manual / Terraform |
+| Serverless | Lambda + API Gateway | Terraform (`modules/lambda`) + Serverless Framework |
+| Monitoring | CloudWatch + SigNoz | Terraform (`modules/cloudwatch`, `modules/signoz`) |
+| Load balancer | ALB | Terraform (`modules/alb`) |
+| AWS access | IAM roles | Terraform (`modules/iam`) |
 
 ## Cost Notes
 
@@ -194,5 +229,7 @@ POST /aws/dynamodb/query ──▶ query_items | query_gsi1 (indexes for alterna
 - [Lambda Guide](lambda-guide.md) — serverless functions
 - [CloudWatch Guide](cloudwatch-guide.md) — metrics, logs, alarms
 - [SigNoz Guide](signoz-guide.md) — OpenTelemetry observability with traces, metrics, logs, APM
+- [Terraform Guide](terraform-guide.md) — infrastructure as code with Terraform
+- [Serverless Guide](serverless-guide.md) — Lambda + API Gateway with Serverless Framework
 
 ← Back to [Docs Index](README.md)

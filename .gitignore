@@ -72,7 +72,13 @@ logs/
 # Terraform
 *.tfstate
 *.tfstate.*
-.tfplan
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# Serverless
+.serverless/
+.webpack/
 
 # Kubernetes
 .kube/
